@@ -842,6 +842,15 @@ export default function Home() {
                       {footer}
                     </p>
                   )}
+                  {mockup === "notes" && (
+                  <button
+                     onClick={() => navigate("/notes")}
+                        className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold"
+                                  style={{ color: c.text }}
+                                                        >
+                        Open My Notebook <ArrowRight size={11} />
+                   </button>
+                  )}
                 </div>
               );
             })}
