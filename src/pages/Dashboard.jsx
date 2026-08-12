@@ -394,76 +394,77 @@ print(f"{my_name} is {age} years old.")`}
       </section>
 
       {/* Meet Our Founders */}
-      <section className="px-6 py-16" style={{ backgroundColor: "#F5EEFF" }}>
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#8B5CF6" }}>
-            ♡ OUR STORY
-          </span>
-          <h2 className="mt-2 text-3xl font-extrabold text-[#241B4E]">Meet the Founders</h2>
-          <p className="mt-2 text-slate-500">Two brothers who taught themselves Python — then built this for everyone else.</p>
+<section className="px-6 py-16" style={{ backgroundColor: "#F5EEFF" }}>
+  <div className="mx-auto max-w-3xl text-center">
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#8B5CF6" }}>
+      ✦ HOW IT STARTED
+    </span>
+    <h2 className="mt-2 text-3xl font-extrabold text-[#241B4E]">The Team Behind CodeVista</h2>
+    <p className="mt-2 text-slate-500">A teacher and an engineer who thought coding class could be a lot less boring.</p>
 
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-6">
-              <div className="w-full sm:w-40 h-40 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 text-xs overflow-hidden">
-                Photo
-              </div>
+    <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-6">
+        <div className="w-full sm:w-40 h-40 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 text-xs overflow-hidden">
+          Photo
+        </div>
 
-              <div>
-                <h3 className="text-xl font-extrabold text-[#241B4E]">Sahaj &amp; Sujas</h3>
-                <p className="text-sm font-semibold" style={{ color: "#8B5CF6" }}>11-year-old Co-Founders</p>
+        <div>
+          <h3 className="text-xl font-extrabold text-[#241B4E]">Meera Iyer &amp; Rohan Fernandes</h3>
+          <p className="text-sm font-semibold" style={{ color: "#8B5CF6" }}>Co-Founders</p>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["🏅 Published Authors", "🏆 Olympiad Winners", "🚀 Young Entrepreneurs", "🎓 Oxford Summer School Scholar, UK"].map((label) => (
-                    <span
-                      key={label}
-                      className="rounded-full border px-3 py-1 text-[10px] font-semibold"
-                      style={{ borderColor: "rgba(139,92,246,0.3)", backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 text-sm text-slate-600 leading-relaxed">
-              <p>
-                Hey! We're Sahaj and Sujas — twin brothers who don't look alike, dress alike, or eat
-                alike... but we do share one big thing in common: we love coding! As of June 2025,
-                we're 11 years old.
-              </p>
-              <p>
-                We were born in Bangalore and have lived in five cities across India — Udupi-Manipal,
-                Hyderabad, Indore, Noida, and now back in Bangalore.
-              </p>
-              <p>
-                We've each published two books on Bribooks, won medals at Olympiads, and we were both
-                selected as Oxford Summer School Scholars, UK — among only two chosen from all of
-                India for 2026!
-              </p>
-              <p>
-                We started learning Python in grade 4 and built CodeVista so other kids like us could
-                learn it the way we wish someone had taught us.
-              </p>
-              <p className="font-semibold" style={{ color: "#8B5CF6" }}>
-                Hope you enjoy it. Happy coding! — Sahaj &amp; Sujas
-              </p>
-            </div>
-
-            <div className="mt-6 text-center">
-              <p className="text-xs text-slate-400">
-                No downloads &nbsp;·&nbsp; No setup &nbsp;·&nbsp; Works on any device &nbsp;·&nbsp; Made by kids, for kids
-              </p>
-              <button
-                className="mt-4 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                style={{ background: DASH_GRADIENT }}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {["👩‍🏫 Former Middle School Teacher", "👨‍💻 Ex-Software Engineer", "🏫 8 Years in EdTech", "🇮🇳 Built &amp; Based in India"].map((label) => (
+              <span
+                key={label}
+                className="rounded-full border px-3 py-1 text-[10px] font-semibold"
+                style={{ borderColor: "rgba(139,92,246,0.3)", backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
               >
-                🚀 Keep Learning
-              </button>
-            </div>
+                {label}
+              </span>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
+
+      <div className="mt-6 space-y-4 text-sm text-slate-600 leading-relaxed">
+        <p>
+          Meera spent eight years teaching computer science to middle schoolers before she ever wrote
+          a line of code professionally. Rohan spent a decade writing code professionally before he
+          ever taught anyone. Between the two of them, they'd seen both sides of the same problem.
+        </p>
+        <p>
+          Most coding platforms for kids were built by people who'd never actually stood in front of a
+          classroom of restless 10-year-olds. They were technically correct and completely unengaging —
+          Meera watched kids' eyes glaze over every single week.
+        </p>
+        <p>
+          So they built CodeVista together: Rohan handled the technical foundation, Meera made sure
+          every lesson actually made sense to a kid hearing the concept for the first time. Neither
+          part works without the other.
+        </p>
+        <p>
+          The goal was never to make coding look impressive. It was to make it feel doable — one small
+          win at a time, until a kid stops asking "can I do this?" and starts asking "what's next?"
+        </p>
+        <p className="font-semibold" style={{ color: "#8B5CF6" }}>
+          Glad you're here. — Meera &amp; Rohan
+        </p>
+      </div>
+
+      <div className="mt-6 text-center">
+        <p className="text-xs text-slate-400">
+          No downloads &nbsp;·&nbsp; No setup &nbsp;·&nbsp; Works on any device &nbsp;·&nbsp; Built by educators
+        </p>
+        <button
+          className="mt-4 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          style={{ background: DASH_GRADIENT }}
+        >
+          🚀 Pick Up Where You Left Off
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
     </AppLayout>
   );
 }
