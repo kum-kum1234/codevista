@@ -27,6 +27,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+
         <Route path="/welcome" element={<Onboarding />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
@@ -45,7 +46,10 @@ export default function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/help" element={<Help />} />
         <Route path="/my-timetable" element={<Timetable />} />
+
+        <Route path="/notes" element={<Notes />} />
         <Route path="/my-notes" element={<Notes />} />
+
         <Route path="/code-together" element={<CodeTogether />} />
         <Route path="/python-help-guide" element={<PythonHelpGuide />} />
         <Route path="/profile" element={<Profile />} />
