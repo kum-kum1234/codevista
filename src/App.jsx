@@ -17,8 +17,8 @@ import TurtleArtStudio from "./pages/TurtleArtStudio";
 // import Help from "./pages/Help";
 import Timetable from "./pages/Timetable";
 import Notes from "./pages/notes";
-// import CodeTogether from "./pages/CodeTogether";
-// import PythonHelpGuide from "./pages/PythonHelpGuide";
+import CodeTogether from "./pages/CodeTogether";
+import PythonHelpGuide from "./pages/PythonHelpGuide";
 // import Profile from "./pages/Profile";
 
 export default function App() {
@@ -48,8 +48,8 @@ export default function App() {
         <Route path="/notes" element={<Notes />} />
         <Route path="/my-notes" element={<Notes />} />
 
-        {/* <Route path="/code-together" element={<CodeTogether />} /> */}
-        {/* <Route path="/python-help-guide" element={<PythonHelpGuide />} /> */}
+        <Route path="/code-together" element={<CodeTogether />} />
+        <Route path="/python-help-guide" element={<PythonHelpGuide />} />
         {/* <Route path="/profile" element={<Profile />} /> */}
       </Routes>
     </BrowserRouter>
