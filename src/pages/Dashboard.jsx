@@ -1,4 +1,5 @@
 import React from "react";
+import CodeRunner from "../components/CodeRunner";
 import { useNavigate } from "react-router-dom";
 import {
   Code2,
@@ -18,6 +19,7 @@ const DASH_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
 const COURSES = [
   {
+    id: "python-starters",
     badge1: "Premium",
     badge2: "Beginner",
     status: "Not Started",
@@ -31,6 +33,7 @@ const COURSES = [
     colorIndex: 4,
   },
   {
+    id: "python-explorer",
     badge1: "Premium",
     badge2: "Intermediate",
     status: "Not Started",
@@ -44,6 +47,7 @@ const COURSES = [
     colorIndex: 2,
   },
   {
+    id: "python-creator",
     badge1: "Premium",
     badge2: "Advanced",
     status: "Not Started",
@@ -152,24 +156,8 @@ export default function Dashboard() {
       <section className="px-6 py-8">
         <h2 className="text-lg font-extrabold text-[#241B4E] mb-3">Give This a Try Right Now</h2>
 
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <div
-            className="flex items-center justify-between px-4 py-2 text-white text-xs font-semibold"
-            style={{ background: DASH_GRADIENT }}
-          >
-            <span className="flex items-center gap-2">✨ A Quick Example to Play With</span>
-          </div>
-
-          <div className="flex items-center justify-between bg-slate-900 px-4 py-2">
-            <span className="text-[10px] text-slate-400">Python 3.11</span>
-            <button className="flex items-center gap-1 rounded bg-green-500 px-3 py-1 text-xs font-semibold text-white">
-              <Play size={11} /> Run
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <pre className="bg-[#1e1e1e] text-slate-300 text-xs p-4 overflow-x-auto leading-relaxed font-mono">
-{`# Welcome to Python! Let's talk about variables.
+        <CodeRunner
+          initialCode={`# Welcome to Python! Let's talk about variables.
 
 # Step 1: Store your name in a variable
 name = "Code Explorer"
@@ -185,12 +173,7 @@ print("Nice to meet you,", my_name, "!")
 # Step 4: Now build a full sentence
 age = 11
 print(f"{my_name} is {age} years old.")`}
-            </pre>
-            <div className="bg-black text-slate-500 text-xs p-4 font-mono">
-              Run the code to see your output here...
-            </div>
-          </div>
-        </div>
+        />
 
         <div className="text-center mt-4">
           <button
@@ -251,6 +234,7 @@ print(f"{my_name} is {age} years old.")`}
                   </div>
                 </div>
                 <button
+                  onClick={() => navigate(`/courses/${c.id}`)}
                   className="px-4 py-2.5 text-xs font-bold text-white hover:opacity-90"
                   style={{ background: DASH_GRADIENT }}
                 >
@@ -394,77 +378,77 @@ print(f"{my_name} is {age} years old.")`}
       </section>
 
       {/* Meet Our Founders */}
-<section className="px-6 py-16" style={{ backgroundColor: "#F5EEFF" }}>
-  <div className="mx-auto max-w-3xl text-center">
-    <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#8B5CF6" }}>
-      ✦ HOW IT STARTED
-    </span>
-    <h2 className="mt-2 text-3xl font-extrabold text-[#241B4E]">The Team Behind CodeVista</h2>
-    <p className="mt-2 text-slate-500">A teacher and an engineer who thought coding class could be a lot less boring.</p>
+      <section className="px-6 py-16" style={{ backgroundColor: "#F5EEFF" }}>
+        <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#8B5CF6" }}>
+            ✦ HOW IT STARTED
+          </span>
+          <h2 className="mt-2 text-3xl font-extrabold text-[#241B4E]">The Team Behind CodeVista</h2>
+          <p className="mt-2 text-slate-500">A teacher and an engineer who thought coding class could be a lot less boring.</p>
 
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
-      <div className="flex flex-col sm:flex-row gap-6">
-        <div className="w-full sm:w-40 h-40 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 text-xs overflow-hidden">
-          Photo
-        </div>
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-6">
+              <div className="w-full sm:w-40 h-40 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 text-xs overflow-hidden">
+                Photo
+              </div>
 
-        <div>
-          <h3 className="text-xl font-extrabold text-[#241B4E]">Meera Iyer &amp; Rohan Fernandes</h3>
-          <p className="text-sm font-semibold" style={{ color: "#8B5CF6" }}>Co-Founders</p>
+              <div>
+                <h3 className="text-xl font-extrabold text-[#241B4E]">Meera Iyer &amp; Rohan Fernandes</h3>
+                <p className="text-sm font-semibold" style={{ color: "#8B5CF6" }}>Co-Founders</p>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {["👩‍🏫 Former Middle School Teacher", "👨‍💻 Ex-Software Engineer", "🏫 8 Years in EdTech", "🇮🇳 Built &amp; Based in India"].map((label) => (
-              <span
-                key={label}
-                className="rounded-full border px-3 py-1 text-[10px] font-semibold"
-                style={{ borderColor: "rgba(139,92,246,0.3)", backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["👩‍🏫 Former Middle School Teacher", "👨‍💻 Ex-Software Engineer", "🏫 8 Years in EdTech", "🇮🇳 Built &amp; Based in India"].map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full border px-3 py-1 text-[10px] font-semibold"
+                      style={{ borderColor: "rgba(139,92,246,0.3)", backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4 text-sm text-slate-600 leading-relaxed">
+              <p>
+                Meera spent eight years teaching computer science to middle schoolers before she ever wrote
+                a line of code professionally. Rohan spent a decade writing code professionally before he
+                ever taught anyone. Between the two of them, they'd seen both sides of the same problem.
+              </p>
+              <p>
+                Most coding platforms for kids were built by people who'd never actually stood in front of a
+                classroom of restless 10-year-olds. They were technically correct and completely unengaging —
+                Meera watched kids' eyes glaze over every single week.
+              </p>
+              <p>
+                So they built CodeVista together: Rohan handled the technical foundation, Meera made sure
+                every lesson actually made sense to a kid hearing the concept for the first time. Neither
+                part works without the other.
+              </p>
+              <p>
+                The goal was never to make coding look impressive. It was to make it feel doable — one small
+                win at a time, until a kid stops asking "can I do this?" and starts asking "what's next?"
+              </p>
+              <p className="font-semibold" style={{ color: "#8B5CF6" }}>
+                Glad you're here. — Meera &amp; Rohan
+              </p>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-slate-400">
+                No downloads &nbsp;·&nbsp; No setup &nbsp;·&nbsp; Works on any device &nbsp;·&nbsp; Built by educators
+              </p>
+              <button
+                className="mt-4 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                style={{ background: DASH_GRADIENT }}
               >
-                {label}
-              </span>
-            ))}
+                🚀 Pick Up Where You Left Off
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 space-y-4 text-sm text-slate-600 leading-relaxed">
-        <p>
-          Meera spent eight years teaching computer science to middle schoolers before she ever wrote
-          a line of code professionally. Rohan spent a decade writing code professionally before he
-          ever taught anyone. Between the two of them, they'd seen both sides of the same problem.
-        </p>
-        <p>
-          Most coding platforms for kids were built by people who'd never actually stood in front of a
-          classroom of restless 10-year-olds. They were technically correct and completely unengaging —
-          Meera watched kids' eyes glaze over every single week.
-        </p>
-        <p>
-          So they built CodeVista together: Rohan handled the technical foundation, Meera made sure
-          every lesson actually made sense to a kid hearing the concept for the first time. Neither
-          part works without the other.
-        </p>
-        <p>
-          The goal was never to make coding look impressive. It was to make it feel doable — one small
-          win at a time, until a kid stops asking "can I do this?" and starts asking "what's next?"
-        </p>
-        <p className="font-semibold" style={{ color: "#8B5CF6" }}>
-          Glad you're here. — Meera &amp; Rohan
-        </p>
-      </div>
-
-      <div className="mt-6 text-center">
-        <p className="text-xs text-slate-400">
-          No downloads &nbsp;·&nbsp; No setup &nbsp;·&nbsp; Works on any device &nbsp;·&nbsp; Built by educators
-        </p>
-        <button
-          className="mt-4 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-          style={{ background: DASH_GRADIENT }}
-        >
-          🚀 Pick Up Where You Left Off
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
     </AppLayout>
   );
 }
