@@ -6,21 +6,15 @@ import Login from "./pages/login";
 import Onboarding from "./pages/onboarding";
 import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
-import CoursesMarketing from "./pages/CoursesMarketing";
 import WhyUs from "./pages/WhyUs";
-import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import Playground from "./pages/Playground";
 import TurtleArtStudio from "./pages/TurtleArtStudio";
 import Achievements from "./pages/Achievements";
 import Community from "./pages/Community";
 import Help from "./pages/Help";
-import Timetable from "./pages/Timetable";
-import Notes from "./pages/Notes";
-import PythonHelpGuide from "./pages/PythonHelpGuide";
 import Profile from "./pages/Profile";
 import CoursePage from "./pages/CoursePage";
-import PythonStartersLesson2 from "./pages/lessons/PythonStartersLesson2";
 export default function App() {
   return (
     <BrowserRouter>
@@ -31,9 +25,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
 
         {/* Public marketing pages */}
-        <Route path="/courses" element={<CoursesMarketing />} />
         <Route path="/why-us" element={<WhyUs />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="/faq" element={<FAQ />} />
 
         {/* In-app course browser */}
@@ -45,11 +37,7 @@ export default function App() {
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/community" element={<Community />} />
         <Route path="/help" element={<Help />} />
-        <Route path="/my-timetable" element={<Timetable />} />
-        <Route path="/my-notes" element={<Notes />} />
-        <Route path="/python-help-guide" element={<PythonHelpGuide />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/lessons/starters/2" element={<PythonStartersLesson2 />} />
 
       </Routes>
     </BrowserRouter>
