@@ -6,7 +6,7 @@ const PYODIDE_VERSION = "0.26.4";
 
 let pyodideLoadPromise = null;
 
-function loadPyodideRuntime() {
+export function loadPyodideRuntime() {
   if (pyodideLoadPromise) return pyodideLoadPromise;
 
   pyodideLoadPromise = new Promise((resolve, reject) => {

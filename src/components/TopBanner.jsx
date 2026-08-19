@@ -6,8 +6,11 @@ export default function TopBanner() {
 
   if (!show) return null;
 
-  return (
-    <div className="flex items-center justify-center gap-2 bg-orange-50 px-4 py-2 text-xs text-pk-orange-end relative shrink-0">
+    return (
+    <div
+      className="flex items-center justify-center gap-2 px-4 py-2 text-xs relative shrink-0"
+      style={{ backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
+    >
       <Sparkles size={13} />
       <span>
         Your browser is now Python ready! Code Lab &amp; Playground are instant &nbsp;·&nbsp; Write &amp;
