@@ -22,6 +22,7 @@ import {
   GripVertical,
   X,
 } from "lucide-react";
+import AppLayout from "../components/AppLayout";
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 import { getCurrentUser } from "../utils/auth";
 import {
@@ -261,6 +262,7 @@ export default function Notes() {
   }
 
   return (
+    <AppLayout active="notes">
     <div className="font-body min-h-screen w-full bg-[#FDFCFA]">
       <FontLoader />
 
@@ -628,5 +630,6 @@ export default function Notes() {
       </div>
       )}
     </div>
+    </AppLayout>
   );
 }

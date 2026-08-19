@@ -29,7 +29,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* Main Pages */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -50,9 +49,7 @@ export default function App() {
           path="/turtle-art-studio"
           element={<TurtleArtStudio />}
         />
-
         <Route path="/code-together" element={<CodeTogether />} />
-
         <Route
           path="/python-help-guide"
           element={<PythonHelpGuide />}
@@ -63,17 +60,8 @@ export default function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/help" element={<Help />} />
         <Route path="/profile" element={<Profile />} />
-
-        <Route
-          path="/my-timetable"
-          element={<Timetable />}
-        />
-
-        <Route
-          path="/my-notes"
-          element={<Notes />}
-        />
-
+        <Route path="/my-timetable" element={<Timetable />} />
+        <Route path="/my-notes" element={<Notes />} />
       </Routes>
     </BrowserRouter>
   );

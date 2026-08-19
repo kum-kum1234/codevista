@@ -142,20 +142,20 @@ export default function Achievements() {
                 </p>
                 <span className="text-[10px] text-slate-400">0/10 earned</span>
               </div>
-              <div className="grid grid-cols-5 gap-3 mb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
                 {BADGES.map((b, i) => {
                   const clr = PALETTE[i % PALETTE.length];
                   return (
-                    <div key={b.title} className="rounded-xl border-2 bg-white p-3 text-center" style={{ borderColor: clr.border }}>
+                    <div key={b.title} className="rounded-xl border-2 bg-white p-5 text-center" style={{ borderColor: clr.border }}>
                       <div
-                        className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full"
+                        className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full"
                         style={{ backgroundColor: clr.bg, color: clr.text }}
                       >
-                        <Lock size={14} />
+                        <Lock size={22} />
                       </div>
-                      <p className="text-[10px] font-bold text-[#241B4E]">{b.title}</p>
+                      <p className="text-sm font-bold text-[#241B4E]">{b.title}</p>
                       <span
-                        className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[8px] font-bold ${
+                        className={`mt-2 inline-block rounded-full px-3 py-1 text-[10px] font-bold ${
                           b.rarity === "Legendary"
                             ? "bg-yellow-50 text-yellow-600"
                             : b.rarity === "Rare"
@@ -202,13 +202,13 @@ export default function Achievements() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {filtered.map((a) => (
-                  <div key={a.title} className="rounded-xl border border-slate-200 bg-white p-3">
-                    <Lock size={14} className="text-slate-300 mb-2" />
-                    <p className="text-xs font-bold text-[#241B4E]">{a.title}</p>
-                    <p className="text-[10px] text-slate-400 leading-snug">{a.desc}</p>
-                    <p className="mt-1 text-[9px] text-slate-300 italic">Keep going to unlock this</p>
+                  <div key={a.title} className="rounded-xl border border-slate-200 bg-white p-5">
+                    <Lock size={20} className="text-slate-300 mb-3" />
+                    <p className="text-sm font-bold text-[#241B4E]">{a.title}</p>
+                    <p className="mt-1 text-xs text-slate-400 leading-snug">{a.desc}</p>
+                    <p className="mt-2 text-[10px] text-slate-300 italic">Keep going to unlock this</p>
                   </div>
                 ))}
               </div>

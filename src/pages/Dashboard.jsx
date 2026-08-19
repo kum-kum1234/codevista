@@ -378,6 +378,7 @@ print(f"{my_name} is {age} years old.")`}
       </section>
 
       {/* Meet Our Founders */}
+      {/*
       <section className="px-6 py-16" style={{ backgroundColor: "#F5EEFF" }}>
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#8B5CF6" }}>
@@ -449,6 +450,7 @@ print(f"{my_name} is {age} years old.")`}
           </div>
         </div>
       </section>
+      */}
     </AppLayout>
   );
 }

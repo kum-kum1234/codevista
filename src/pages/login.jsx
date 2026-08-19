@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Phone, Sparkles, Trophy, Rocket, BookOpen, User } from "lucide-react";
+import { Mail, Phone, Sparkles, Trophy, Rocket, BookOpen, User, ChevronLeft, Zap, Award, Layers } from "lucide-react";
 import { setCurrentUser, nameFromEmail } from "../utils/auth";
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 
@@ -12,6 +12,16 @@ const FEATURES = [
   { icon: Rocket, title: "Python + Turtle Art", description: "Two creative ways to code" },
   { icon: BookOpen, title: "Curriculum for ages 8–14", description: "Structured, step-by-step learning path" },
 ];
+
+const UNREGISTERED_FEATURES = [
+  { icon: Zap, title: "Learn Python from scratch", description: "No experience needed" },
+  { icon: Award, title: "Certificates on completion", description: "Real achievements to be proud of" },
+  { icon: Layers, title: "Structured 3-course path", description: "Beginner to advanced" },
+];
+
+// DEMO ONLY: used to simulate "email already registered" validation.
+// Swap for a real POST /auth/check-email (or similar) once the backend exists.
+const MOCK_TAKEN_EMAILS = ["kumkum.goyal@gmail.com", "aryan.sharma14@gmail.com"];
 
 function GoogleIcon(props) {
   return (
@@ -34,16 +44,46 @@ export default function Login() {
   const navigate = useNavigate();
   const [mode, setMode] = useState(null); // null | "email" | "phone"
   const [form, setForm] = useState({ email: "", password: "", phone: "", otp: "" });
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showGooglePicker, setShowGooglePicker] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
   const [newAccountEmail, setNewAccountEmail] = useState("");
 
+  // Phone flow sub-stage: "enter" -> "unregistered" -> "otp" -> "create-account"
+  const [phoneStage, setPhoneStage] = useState("enter");
+  const [otpBoxes, setOtpBoxes] = useState(["", "", "", "", "", ""]);
+  const [resendSeconds, setResendSeconds] = useState(45);
+  const otpRefs = useRef([]);
+
+  // Account creation form (after OTP verify)
+  const [accountName, setAccountName] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [emailTakenError, setEmailTakenError] = useState(false);
+
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  // DEMO MODE: no backend calls — just simulate a short delay, then go to /dashboard.
-  // Swap the body of these handlers back to the axios calls once your backend is running.
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    if (phoneStage !== "otp") return;
+    if (resendSeconds <= 0) return;
+    const t = setTimeout(() => setResendSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [phoneStage, resendSeconds]);
+
+  function resetPhoneFlow() {
+    setPhoneStage("enter");
+    setForm((f) => ({ ...f, phone: "" }));
+    setOtpBoxes(["", "", "", "", "", ""]);
+    setResendSeconds(45);
+    setAccountName("");
+    setAccountEmail("");
+    setAgreedTerms(false);
+    setEmailTakenError(false);
+  }
+
+  // DEMO MODE: no backend calls — just simulate a short delay.
+  // Swap these handlers for real API calls once your backend is running.
 
   function handleEmailSubmit(e) {
     e.preventDefault();
@@ -60,22 +100,72 @@ export default function Login() {
     }, 500);
   }
 
-  function handlePhoneSubmit(e) {
+  function handleSendOtp(e) {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (!otpSent) {
-        setOtpSent(true);
-      } else {
-        setCurrentUser({
-          name: "CodeVista User",
-          phone: form.phone,
-          provider: "phone",
-          accountType: "Free",
-        });
-        navigate("/dashboard");
-      }
+      // DEMO: always treat the number as unregistered to show the linking screen.
+      // Swap this for a real "does this number exist?" API check.
+      setPhoneStage("unregistered");
+    }, 500);
+  }
+
+  function goToOtpStage() {
+    setPhoneStage("otp");
+    setResendSeconds(45);
+    setOtpBoxes(["", "", "", "", "", ""]);
+    setTimeout(() => otpRefs.current[0]?.focus(), 50);
+  }
+
+  function handleOtpBoxChange(index, value) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    setOtpBoxes((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+    if (digit && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index, e) {
+    if (e.key === "Backspace" && !otpBoxes[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleVerifyOtp(e) {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      // Move on to account creation instead of logging straight in.
+      setPhoneStage("create-account");
+    }, 500);
+  }
+
+  function handleCreateAccountSubmit(e) {
+    e.preventDefault();
+    setEmailTakenError(false);
+
+    if (accountEmail && MOCK_TAKEN_EMAILS.includes(accountEmail.trim().toLowerCase())) {
+      setEmailTakenError(true);
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setCurrentUser({
+        name: accountName.trim(),
+        email: accountEmail.trim() || undefined,
+        phone: form.phone,
+        provider: "phone",
+        accountType: "Free",
+      });
+      navigate("/dashboard");
     }, 500);
   }
 
@@ -107,6 +197,23 @@ export default function Login() {
     });
   }
 
+  const currentFeatures =
+    phoneStage === "unregistered" || phoneStage === "otp" || phoneStage === "create-account"
+      ? UNREGISTERED_FEATURES
+      : FEATURES;
+  const heroTitle =
+    phoneStage === "unregistered" || phoneStage === "otp" || phoneStage === "create-account"
+      ? "Join thousands of young coders"
+      : "Start your coding journey";
+  const heroSubtitle =
+    phoneStage === "unregistered" || phoneStage === "otp" || phoneStage === "create-account"
+      ? "Your coding adventure starts here."
+      : "Build with code, one lesson at a time.";
+  const heroTagline =
+    phoneStage === "unregistered" || phoneStage === "otp" || phoneStage === "create-account"
+      ? "Created by Sahaj and Sujas, age 11, Bangalore."
+      : "Made by kids, for kids aged 8–14.";
+
   return (
     <div
       className="font-body min-h-screen w-full flex items-center justify-center p-6"
@@ -130,13 +237,13 @@ export default function Login() {
           </div>
 
           <h1 className="font-display text-4xl md:text-5xl font-extrabold leading-tight mb-4">
-            Start your coding journey
+            {heroTitle}
           </h1>
-          <p className="text-lg text-white/90 mb-1">Build with code, one lesson at a time.</p>
-          <p className="text-white/70 mb-10">Made by kids, for kids aged 8–14.</p>
+          <p className="text-lg text-white/90 mb-1">{heroSubtitle}</p>
+          <p className="text-white/70 mb-10">{heroTagline}</p>
 
           <ul className="space-y-5">
-            {FEATURES.map(({ icon: Icon, title, description }) => (
+            {currentFeatures.map(({ icon: Icon, title, description }) => (
               <li key={title} className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15">
                   <Icon size={18} />
@@ -153,141 +260,403 @@ export default function Login() {
         {/* Right panel */}
         <div className="bg-white p-10 md:p-12 flex flex-col items-center justify-center">
           <div className="w-full max-w-sm">
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <span className="text-xl font-black" style={{ color: "#8B5CF6" }}>{"</>"}</span>
-                <span className="font-display text-xl font-bold" style={{ color: "#8B5CF6" }}>CodeVista</span>
-              </div>
-              <p className="text-sm text-slate-400">Made by Kids, for Kids</p>
-            </div>
-
-            <h2 className="font-display text-2xl font-bold text-[#241B4E] text-center mb-6">
-              Welcome to CodeVista
-            </h2>
-
+            {/* ---------------- Initial method picker ---------------- */}
             {mode === null && (
-              <div className="space-y-3">
-                <button
-                  onClick={() => setMode("email")}
-                  className="w-full flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors"
-                  style={{ borderColor: PALETTE[5].border }}
-                >
-                  <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: PALETTE[5].bg }}
-                  >
-                    <Mail size={16} style={{ color: PALETTE[5].text }} />
-                  </span>
-                  Continue with Email
-                </button>
+              <>
+                <div className="text-center mb-8">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className="text-xl font-black" style={{ color: "#8B5CF6" }}>{"</>"}</span>
+                    <span className="font-display text-xl font-bold" style={{ color: "#8B5CF6" }}>CodeVista</span>
+                  </div>
+                  <p className="text-sm text-slate-400">Made by Kids, for Kids</p>
+                </div>
 
-                <button
-                  onClick={() => setMode("phone")}
-                  className="w-full flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors"
-                  style={{ borderColor: PALETTE[2].border }}
-                >
-                  <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: PALETTE[2].bg }}
-                  >
-                    <Phone size={16} style={{ color: PALETTE[2].text }} />
-                  </span>
-                  Continue with Phone
-                </button>
+                <h2 className="font-display text-2xl font-bold text-[#241B4E] text-center mb-6">
+                  Welcome to CodeVista
+                </h2>
 
-                <button
-                  onClick={handleGoogleClick}
-                  disabled={loading}
-                  className="w-full flex items-center gap-3 rounded-xl border-2 border-slate-200 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors disabled:opacity-60"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50">
-                    <GoogleIcon />
-                  </span>
-                  {loading ? "Please wait..." : "Continue with Google"}
-                </button>
-              </div>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setMode("email")}
+                    className="w-full flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors"
+                    style={{ borderColor: PALETTE[5].border }}
+                  >
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: PALETTE[5].bg }}
+                    >
+                      <Mail size={16} style={{ color: PALETTE[5].text }} />
+                    </span>
+                    Continue with Email
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setMode("phone");
+                      resetPhoneFlow();
+                    }}
+                    className="w-full flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors"
+                    style={{ borderColor: PALETTE[2].border }}
+                  >
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: PALETTE[2].bg }}
+                    >
+                      <Phone size={16} style={{ color: PALETTE[2].text }} />
+                    </span>
+                    Continue with Phone
+                  </button>
+
+                  <button
+                    onClick={handleGoogleClick}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 rounded-xl border-2 border-slate-200 px-4 py-3 text-[#241B4E] font-medium hover:bg-slate-50 transition-colors disabled:opacity-60"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50">
+                      <GoogleIcon />
+                    </span>
+                    {loading ? "Please wait..." : "Continue with Google"}
+                  </button>
+                </div>
+              </>
             )}
 
+            {/* ---------------- Email form ---------------- */}
             {mode === "email" && (
-              <form onSubmit={handleEmailSubmit} className="space-y-3">
-                <input
-                  type="email"
-                  required
-                  placeholder="Email address"
-                  value={form.email}
-                  onChange={update("email")}
-                  className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
-                  style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
-                />
-                <input
-                  type="password"
-                  required
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={update("password")}
-                  className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
-                  style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl px-4 py-3 font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-                  style={{ background: LOGIN_GRADIENT }}
-                >
-                  {loading ? "Please wait..." : "Continue"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode(null)}
-                  className="w-full text-sm text-slate-400 hover:text-[#241B4E]"
-                >
-                  Back
-                </button>
-              </form>
-            )}
+              <>
+                <div className="text-center mb-8">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className="text-xl font-black" style={{ color: "#8B5CF6" }}>{"</>"}</span>
+                    <span className="font-display text-xl font-bold" style={{ color: "#8B5CF6" }}>CodeVista</span>
+                  </div>
+                  <p className="text-sm text-slate-400">Made by Kids, for Kids</p>
+                </div>
 
-            {mode === "phone" && (
-              <form onSubmit={handlePhoneSubmit} className="space-y-3">
-                <input
-                  type="tel"
-                  required
-                  placeholder="Phone number"
-                  value={form.phone}
-                  onChange={update("phone")}
-                  disabled={otpSent}
-                  className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2 disabled:bg-slate-50"
-                  style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
-                />
-                {otpSent && (
+                <form onSubmit={handleEmailSubmit} className="space-y-3">
                   <input
-                    type="text"
+                    type="email"
                     required
-                    placeholder="Enter OTP (any digits work in demo mode)"
-                    value={form.otp}
-                    onChange={update("otp")}
+                    placeholder="Email address"
+                    value={form.email}
+                    onChange={update("email")}
                     className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
                     style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
                   />
-                )}
+                  <input
+                    type="password"
+                    required
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={update("password")}
+                    className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
+                    style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-xl px-4 py-3 font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+                    style={{ background: LOGIN_GRADIENT }}
+                  >
+                    {loading ? "Please wait..." : "Continue"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode(null)}
+                    className="w-full text-sm text-slate-400 hover:text-[#241B4E]"
+                  >
+                    Back
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* ---------------- Phone flow ---------------- */}
+            {mode === "phone" && (
+              <>
+                {/* Shared compact header for all phone-flow screens */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-black" style={{ color: "#8B5CF6" }}>{"</>"}</span>
+                    <span className="font-display text-lg font-bold" style={{ color: "#8B5CF6" }}>CodeVista</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">Made by Kids, for Kids</p>
+                </div>
+
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl px-4 py-3 font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-                  style={{ background: LOGIN_GRADIENT }}
-                >
-                  {loading ? "Please wait..." : otpSent ? "Verify OTP" : "Send OTP"}
-                </button>
-                <button
-                  type="button"
                   onClick={() => {
-                    setMode(null);
-                    setOtpSent(false);
+                    if (phoneStage === "enter") {
+                      setMode(null);
+                    } else if (phoneStage === "unregistered") {
+                      setPhoneStage("enter");
+                    } else if (phoneStage === "otp") {
+                      setPhoneStage("unregistered");
+                    } else {
+                      setPhoneStage("otp");
+                    }
                   }}
-                  className="w-full text-sm text-slate-400 hover:text-[#241B4E]"
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-[#241B4E] mb-4"
                 >
-                  Back
+                  <ChevronLeft size={15} /> Back
                 </button>
-              </form>
+
+                {/* Stage 1: enter phone number */}
+                {phoneStage === "enter" && (
+                  <>
+                    <h2 className="font-display text-2xl font-bold text-[#241B4E] mb-1">Continue with Phone</h2>
+                    <p className="text-sm text-slate-400 mb-5">Enter your mobile number to receive a one-time code.</p>
+
+                    <form onSubmit={handleSendOtp}>
+                      <label className="text-xs font-semibold text-slate-500">Mobile Number</label>
+                      <div className="mt-1.5 mb-5 flex">
+                        <span
+                          className="flex items-center gap-1 rounded-l-xl border-2 border-r-0 px-3 text-sm text-slate-500"
+                          style={{ borderColor: "#E2E8F0", backgroundColor: "#F8FAFC" }}
+                        >
+                          IN +91
+                        </span>
+                        <input
+                          type="tel"
+                          required
+                          value={form.phone}
+                          onChange={update("phone")}
+                          placeholder="9171738097"
+                          className="w-full rounded-r-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
+                          style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+                        style={{ background: LOGIN_GRADIENT }}
+                      >
+                        {loading ? "Please wait..." : "Send OTP"}
+                      </button>
+                    </form>
+
+                    <div className="mt-5 space-y-2.5 text-center border-t border-slate-100 pt-4">
+                      <button
+                        onClick={() => setMode("email")}
+                        className="block w-full text-sm font-medium"
+                        style={{ color: "#8B5CF6" }}
+                      >
+                        Sign in with Email instead
+                      </button>
+                      <button
+                        onClick={handleGoogleClick}
+                        className="block w-full text-sm font-medium"
+                        style={{ color: "#8B5CF6" }}
+                      >
+                        Sign in with Google
+                      </button>
+                      <button
+                        onClick={() => setMode("email")}
+                        className="block w-full text-sm font-medium text-red-500"
+                      >
+                        Use email instead
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Stage 2: number not linked yet */}
+                {phoneStage === "unregistered" && (
+                  <>
+                    <h2 className="font-display text-2xl font-bold text-[#241B4E] mb-1">This number isn't linked yet.</h2>
+                    <p className="text-sm mb-6" style={{ color: "#8B5CF6" }}>+91{form.phone}</p>
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={goToOtpStage}
+                        className="w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity"
+                        style={{ background: LOGIN_GRADIENT }}
+                      >
+                        Create an account with this number
+                      </button>
+                      <button
+                        onClick={goToOtpStage}
+                        className="w-full rounded-xl border-2 px-4 py-3 font-semibold hover:bg-slate-50 transition-colors"
+                        style={{ borderColor: "#8B5CF6", color: "#8B5CF6" }}
+                      >
+                        Link this number to an existing account
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setPhoneStage("enter")}
+                      className="mt-5 block w-full text-center text-sm text-slate-400 hover:text-[#241B4E]"
+                    >
+                      Use a different number
+                    </button>
+                  </>
+                )}
+
+                {/* Stage 3: enter OTP */}
+                {phoneStage === "otp" && (
+                  <>
+                    <h2 className="font-display text-2xl font-bold text-[#241B4E] mb-1">
+                      Enter the code sent to your number.
+                    </h2>
+                    <p className="text-sm text-slate-400 mb-6">
+                      A 6-digit code was sent to <span style={{ color: "#8B5CF6" }}>+91{form.phone}</span>.
+                    </p>
+
+                    <form onSubmit={handleVerifyOtp}>
+                      <div className="flex justify-between gap-2 mb-6">
+                        {otpBoxes.map((digit, i) => (
+                          <input
+                            key={i}
+                            ref={(el) => (otpRefs.current[i] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleOtpBoxChange(i, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                            className="h-12 w-11 rounded-xl border-2 border-slate-200 text-center text-lg font-bold outline-none focus:ring-2"
+                            style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
+                          />
+                        ))}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading || otpBoxes.some((d) => !d)}
+                        className="w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+                        style={{ background: LOGIN_GRADIENT }}
+                      >
+                        {loading ? "Please wait..." : "Verify Code"}
+                      </button>
+                    </form>
+
+                    <div className="mt-4 text-center text-sm">
+                      {resendSeconds > 0 ? (
+                        <span className="text-slate-400">Resend code in {resendSeconds}s</span>
+                      ) : (
+                        <button
+                          onClick={() => setResendSeconds(45)}
+                          className="font-medium"
+                          style={{ color: "#8B5CF6" }}
+                        >
+                          Resend code
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-5 space-y-2.5 text-center border-t border-slate-100 pt-4">
+                      <button
+                        onClick={() => setPhoneStage("enter")}
+                        className="block w-full text-sm font-medium"
+                        style={{ color: "#8B5CF6" }}
+                      >
+                        Use a different number
+                      </button>
+                      <button
+                        onClick={() => setMode("email")}
+                        className="block w-full text-sm font-medium"
+                        style={{ color: "#8B5CF6" }}
+                      >
+                        Sign in with Email instead
+                      </button>
+                      <button
+                        onClick={handleGoogleClick}
+                        className="block w-full text-sm font-medium"
+                        style={{ color: "#8B5CF6" }}
+                      >
+                        Sign in with Google
+                      </button>
+                      <button
+                        onClick={() => setMode("email")}
+                        className="block w-full text-sm font-medium text-red-500"
+                      >
+                        Use email instead
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Stage 4: create account (after OTP verified) */}
+                {phoneStage === "create-account" && (
+                  <>
+                    <h2 className="font-display text-2xl font-bold text-[#241B4E] mb-1">Create your account</h2>
+                    <p className="text-sm text-slate-400 mb-6">
+                      Your phone number was verified. Complete your profile below.
+                    </p>
+
+                    <form onSubmit={handleCreateAccountSubmit}>
+                      <label className="text-xs font-semibold text-slate-500">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        placeholder="Your full name"
+                        className="mt-1.5 mb-4 w-full rounded-xl border-2 border-slate-200 px-4 py-3 outline-none focus:ring-2"
+                        style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
+                      />
+
+                      <label className="text-xs font-semibold text-slate-500">
+                        Email <span className="text-slate-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={accountEmail}
+                        onChange={(e) => {
+                          setAccountEmail(e.target.value);
+                          setEmailTakenError(false);
+                        }}
+                        placeholder="Your email address"
+                        className="mt-1.5 w-full rounded-xl border-2 px-4 py-3 outline-none focus:ring-2"
+                        style={{
+                          borderColor: emailTakenError ? "#EF4444" : "#E2E8F0",
+                          "--tw-ring-color": "rgba(139,92,246,0.3)",
+                        }}
+                      />
+                      {emailTakenError && (
+                        <p className="mt-1.5 text-xs font-medium text-red-500">
+                          This email is already registered. Try signing in instead, or use a different email.
+                        </p>
+                      )}
+
+                      <label className="mt-4 flex items-start gap-2 text-xs text-slate-500">
+                        <input
+                          type="checkbox"
+                          required
+                          checked={agreedTerms}
+                          onChange={(e) => setAgreedTerms(e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span>
+                          I agree to the{" "}
+                          <span className="font-medium" style={{ color: "#8B5CF6" }}>Terms of Service</span> and{" "}
+                          <span className="font-medium" style={{ color: "#8B5CF6" }}>Privacy Policy</span>{" "}
+                          <span className="text-red-500">*</span>
+                        </span>
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={loading || !accountName.trim() || !agreedTerms}
+                        className="mt-5 w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+                        style={{ background: LOGIN_GRADIENT }}
+                      >
+                        {loading ? "Please wait..." : "Create Account"}
+                      </button>
+                    </form>
+
+                    <button
+                      onClick={() => setPhoneStage("enter")}
+                      className="mt-4 block w-full text-center text-sm underline"
+                      style={{ color: "#8B5CF6" }}
+                    >
+                      Link to an existing account instead
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

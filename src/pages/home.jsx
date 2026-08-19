@@ -951,12 +951,12 @@ export default function Home() {
           </h2>
         </div>
 
-        <div className="mt-8 flex gap-4 overflow-x-auto px-8 pb-2">
+        <div className="mt-8 flex flex-wrap justify-center gap-4 px-8 pb-2">
           {TESTIMONIALS_KIDS.map((t) => (
             <TestimonialCard key={t.name} {...t} />
           ))}
         </div>
-        <div className="mt-4 flex gap-4 overflow-x-auto px-8">
+        <div className="mt-4 flex flex-wrap justify-center gap-4 px-8">
           {TESTIMONIALS_PARENTS.map((t) => (
             <TestimonialCard key={t.name} {...t} />
           ))}
