@@ -155,6 +155,7 @@ export default function WhyUs() {
         </div>
 
         {/* Founders */}
+        {/*
         <div className="mx-auto mt-12 max-w-4xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#EC4899] shadow-sm">
             <Heart size={11} /> Our Story
@@ -219,6 +220,7 @@ export default function WhyUs() {
             </div>
           </div>
         </div>
+        */}
       </section>
 
       {/* ---------------- Closing CTA ---------------- */}
