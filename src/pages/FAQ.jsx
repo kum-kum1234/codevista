@@ -6,20 +6,20 @@ import { HelpCircle, ChevronDown } from "lucide-react";
 
 const FAQS = [
   {
-    q: "What age group is PythonKid designed for?",
-    a: "PythonKid is built for kids aged 6–14. Our lessons are taught by kids, for kids, so the pacing and language stay age-appropriate throughout.",
+    q: "What age group is CodeVista designed for?",
+    a: "CodeVista is built for kids aged 6–14. Our lessons are taught by kids, for kids, so the pacing and language stay age-appropriate throughout.",
   },
   {
     q: "Does my child need any coding experience to start?",
     a: "No experience needed! Python Starters begins from the very basics — what Python is, how to write your first line of code, and builds up from there.",
   },
   {
-    q: "What devices does PythonKid work on?",
-    a: "PythonKid runs entirely in the browser — no downloads or installs. It works on any laptop, Chromebook, or tablet with an internet connection.",
+    q: "What devices does CodeVista work on?",
+    a: "CodeVista runs entirely in the browser — no downloads or installs. It works on any laptop, Chromebook, or tablet with an internet connection.",
   },
   {
     q: "Is there a parent sign-in required?",
-    a: "Nope — that's actually why PythonKid was built! Kids can sign up and start learning without needing a parent to log in every time.",
+    a: "Nope — that's actually why CodeVista was built! Kids can sign up and start learning without needing a parent to log in every time.",
   },
   {
     q: "What do we get with the ₹1,499 annual plan?",

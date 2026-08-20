@@ -8,7 +8,7 @@ const CHANNELS = [
   {
     icon: Mail,
     title: "Email Us",
-    desc: "hello@pythonkid.io",
+    desc: "hello@codevista.io",
     colorIndex: 0,
   },
   {

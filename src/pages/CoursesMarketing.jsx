@@ -468,7 +468,7 @@ export default function CoursesMarketing() {
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PALETTE[3].solid }} />
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PALETTE[2].solid }} />
                 <span className="ml-2 flex-1 truncate rounded-full bg-white border border-slate-200 px-2 py-0.5 text-[10px] text-slate-400">
-                  pythonkid.io/lessons/what-is-python
+                  .io/lessons/what-is-python
                 </span>
               </div>
               <div className="flex gap-3 justify-center border-b border-[#F0EAFF] py-1.5 text-[10px] font-bold text-slate-400">

@@ -31,21 +31,21 @@ const BADGES = [
 ];
 
 const ACHIEVEMENTS = [
-  { title: "First Steps", desc: "Finish your very first lesson" },
-  { title: "Getting Started", desc: "Complete 5 lessons" },
-  { title: "Python Beginner", desc: "Complete 10 lessons" },
-  { title: "Code Master", desc: "Complete 25 lessons" },
-  { title: "Python Ninja", desc: "Finish every beginner course" },
-  { title: "Code Explorer", desc: "Run 25 code examples in the playground" },
-  { title: "Bug Hunter", desc: "Fix 5 coding errors on your own" },
-  { title: "Project Creator", desc: "Build and save your first project" },
-  { title: "Helping Hand", desc: "Comment on 5 other students' projects" },
-  { title: "Streak Hero", desc: "Log in 7 days in a row" },
-  { title: "Python Artist", desc: "Create a visual art piece with Python" },
-  { title: "Game Designer", desc: "Build a working game in Python" },
-  { title: "Data Wizard", desc: "Complete 5 data analysis projects" },
-  { title: "Quiz Champion", desc: "Score perfectly on 5 quizzes" },
-  { title: "Team Player", desc: "Collaborate on a project with another student" },
+  { title: "First Steps", desc: "Finish your very first lesson", unlocked: false },
+  { title: "Getting Started", desc: "Complete 5 lessons", unlocked: false },
+  { title: "Python Beginner", desc: "Complete 10 lessons", unlocked: false },
+  { title: "Code Master", desc: "Complete 25 lessons", unlocked: false },
+  { title: "Python Ninja", desc: "Finish every beginner course", unlocked: false },
+  { title: "Code Explorer", desc: "Run 25 code examples in the playground", unlocked: false },
+  { title: "Bug Hunter", desc: "Fix 5 coding errors on your own", unlocked: false },
+  { title: "Project Creator", desc: "Build and save your first project", unlocked: false },
+  { title: "Helping Hand", desc: "Comment on 5 other students' projects", unlocked: false },
+  { title: "Streak Hero", desc: "Log in 7 days in a row", unlocked: false },
+  { title: "Python Artist", desc: "Create a visual art piece with Python", unlocked: false },
+  { title: "Game Designer", desc: "Build a working game in Python", unlocked: false },
+  { title: "Data Wizard", desc: "Complete 5 data analysis projects", unlocked: false },
+  { title: "Quiz Champion", desc: "Score perfectly on 5 quizzes", unlocked: false },
+  { title: "Team Player", desc: "Collaborate on a project with another student", unlocked: false },
 ];
 
 const TABS = ["Achievements", "Progress Report"];
@@ -64,9 +64,14 @@ export default function Achievements() {
     year: "numeric",
   });
 
-  const filtered = ACHIEVEMENTS.filter((a) =>
-    a.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = ACHIEVEMENTS.filter((a) => {
+    const matchesSearch = a.title.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter =
+      filter === "All" ||
+      (filter === "Unlocked" && a.unlocked) ||
+      (filter === "Locked" && !a.unlocked);
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <AppLayout active="achievements">
@@ -204,13 +209,37 @@ export default function Achievements() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {filtered.map((a) => (
-                  <div key={a.title} className="rounded-xl border border-slate-200 bg-white p-5">
-                    <Lock size={20} className="text-slate-300 mb-3" />
+                  <div
+                    key={a.title}
+                    className="rounded-xl border p-5"
+                    style={
+                      a.unlocked
+                        ? { borderColor: "#DFCBFF", backgroundColor: "#F5EEFF" }
+                        : { borderColor: "#E2E8F0", backgroundColor: "white" }
+                    }
+                  >
+                    {a.unlocked ? (
+                      <CheckCircle2 size={20} className="mb-3" style={{ color: "#8B5CF6" }} />
+                    ) : (
+                      <Lock size={20} className="text-slate-300 mb-3" />
+                    )}
                     <p className="text-sm font-bold text-[#241B4E]">{a.title}</p>
                     <p className="mt-1 text-xs text-slate-400 leading-snug">{a.desc}</p>
-                    <p className="mt-2 text-[10px] text-slate-300 italic">Keep going to unlock this</p>
+                    <p
+                      className={`mt-2 text-[10px] ${a.unlocked ? "font-semibold" : "italic text-slate-300"}`}
+                      style={a.unlocked ? { color: "#8B5CF6" } : undefined}
+                    >
+                      {a.unlocked ? "Unlocked!" : "Keep going to unlock this"}
+                    </p>
                   </div>
                 ))}
+                {filtered.length === 0 && (
+                  <div className="col-span-full rounded-xl border border-dashed border-slate-200 p-8 text-center">
+                    <p className="text-sm font-semibold text-slate-400">
+                      No {filter !== "All" ? filter.toLowerCase() : ""} achievements found.
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           ) : (

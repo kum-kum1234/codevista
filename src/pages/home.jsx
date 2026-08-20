@@ -259,53 +259,53 @@ export default function Home() {
           </div>
 
           {/* Live activity card — replaces the old video panel */}
-          <div className="rounded-2xl border-2 bg-white p-6 shadow-sm" style={{ borderColor: PALETTE[2].border }}>
+          <div className="rounded-3xl border-2 bg-white p-8 shadow-sm" style={{ borderColor: PALETTE[2].border }}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
                   style={{ backgroundColor: PALETTE[2].bg, color: PALETTE[2].text }}
                 >
-                  <Signal size={16} />
+                  <Signal size={20} />
                 </span>
-                <h2 className="font-display font-bold text-[#241B4E]">Happening Right Now</h2>
+                <h2 className="font-display text-lg font-bold text-[#241B4E]">Happening Right Now</h2>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> LIVE
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-500">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> LIVE
               </span>
             </div>
 
-            <div className="mt-5 flex items-center gap-3">
-              <div className="flex -space-x-2">
+            <div className="mt-7 flex items-center gap-4">
+              <div className="flex -space-x-2.5">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <span
                     key={i}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-bold"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-sm font-bold"
                     style={{ backgroundColor: PALETTE[i].bg, color: PALETTE[i].text }}
                   >
                     {["A", "S", "R", "M", "K"][i]}
                   </span>
                 ))}
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-base text-slate-500">
                 <span className="font-bold text-[#241B4E]">128 kids</span> are learning Python this minute
               </p>
             </div>
 
-            <div className="mt-5 space-y-2.5">
+            <div className="mt-7 space-y-3.5">
               {[
                 { name: "Python Starters", students: 54, colorIndex: 4 },
                 { name: "Python Explorer", students: 41, colorIndex: 2 },
                 { name: "Python Creator", students: 33, colorIndex: 5 },
               ].map(({ name, students, colorIndex }) => (
-                <div key={name} className="flex items-center justify-between rounded-lg bg-[#FDFCFA] px-3 py-2 text-xs">
+                <div key={name} className="flex items-center justify-between rounded-xl bg-[#FDFCFA] px-4 py-3.5 text-sm">
                   <span className="font-semibold text-[#241B4E]">{name}</span>
                   <span className="font-bold" style={{ color: PALETTE[colorIndex].text }}>{students} active</span>
                 </div>
               ))}
             </div>
 
-            <p className="mt-4 text-center text-xs text-slate-400 italic">
+            <p className="mt-6 text-center text-sm text-slate-400 italic">
               Real kids, learning right now — not a demo reel.
             </p>
           </div>

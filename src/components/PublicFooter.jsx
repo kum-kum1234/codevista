@@ -32,7 +32,7 @@ export default function PublicFooter() {
             >
               {"</>"}
             </span>
-            <span className="font-display font-extrabold text-[#241B4E]">PythonKid</span>
+            <span className="font-display font-extrabold text-[#241B4E]">CodeVista</span>
           </div>
           <p className="mt-2 text-xs text-slate-400 max-w-[200px]">
             Making Python programming fun and accessible for kids aged 6-14.

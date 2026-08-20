@@ -20,7 +20,7 @@ export default function Onboarding() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="flex items-center gap-2 mb-8">
           <span className="text-pk-purple text-2xl">{"</>"}</span>
-          <span className="text-2xl font-bold text-pk-text-dark">PythonKid</span>
+          <span className="text-2xl font-bold text-pk-text-dark">CodeVista</span>
         </div>
 
         <h1 className="text-2xl font-extrabold text-pk-text-dark">Welcome, {firstName}!</h1>
@@ -71,7 +71,7 @@ export default function Onboarding() {
               : "bg-pink-300 cursor-not-allowed"
           }`}
         >
-          Continue to PythonKid
+          Continue to CodeVista
         </button>
       </div>
     </div>

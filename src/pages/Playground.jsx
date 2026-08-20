@@ -261,16 +261,32 @@ export default function Playground() {
                 <Play size={12} /> {running ? "Running..." : "Run"}
               </button>
             </div>
-
             {/* Code + output split */}
             <div className="flex-1 min-h-0 grid grid-cols-2 gap-px bg-slate-200">
               <textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 spellCheck={false}
-                className="w-full h-full resize-none bg-[#1e1e1e] text-slate-200 font-mono text-xs p-4 outline-none leading-relaxed"
+                className="w-full h-full resize-none text-[#241B4E] font-mono text-xs p-4 outline-none leading-relaxed border-r-4"
+                style={{
+                  borderColor: "#8B5CF6",
+                  backgroundColor: "#FBF7FF",
+                  backgroundImage:
+                    "radial-gradient(#DCC9FF 1.5px, transparent 1.5px)",
+                  backgroundSize: "18px 18px",
+                }}
               />
-              <div className="w-full h-full bg-black text-green-400 font-mono text-xs p-4 overflow-y-auto whitespace-pre-wrap">
+              <div
+                className="w-full h-full text-[#0B3B4F] font-mono text-xs p-4 overflow-y-auto whitespace-pre-wrap"
+                style={{
+                  backgroundColor: "#E9FBFF",
+                  backgroundImage:
+                    "radial-gradient(circle at 20% 30%, rgba(139,92,246,0.08) 0px, transparent 60px)," +
+                    "radial-gradient(circle at 80% 70%, rgba(26,172,219,0.10) 0px, transparent 80px)," +
+                    "radial-gradient(#BEEFFC 1.5px, transparent 1.5px)",
+                  backgroundSize: "auto, auto, 18px 18px",
+                }}
+              >
                 {output || "Hit Run to see your output here..."}
               </div>
             </div>

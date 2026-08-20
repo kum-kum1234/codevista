@@ -30,7 +30,7 @@ const REASONS = [
   {
     icon: CircleDot,
     title: "Peer Learning Works",
-    desc: "Research proves it: kids learn better from peers. Peer learning boosts memory, focus, and confidence. That's exactly how PythonKid is built.",
+    desc: "Research proves it: kids learn better from peers. Peer learning boosts memory, focus, and confidence. That's exactly how CodeVista is built.",
   },
   {
     icon: Zap,
@@ -82,7 +82,7 @@ export default function WhyUs() {
             className="bg-clip-text text-transparent"
             style={{ backgroundImage: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
           >
-            PythonKid?
+            CodeVista?
           </span>
         </h1>
         <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">

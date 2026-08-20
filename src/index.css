@@ -9,6 +9,10 @@
   --color-pk-border: #E2E8F0;
 }
 
+html {
+  font-size: 108%;
+}
+
 body {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
