@@ -245,7 +245,7 @@ export default function Home() {
               teacher for a kid is another kid who just learned it themselves.
             </p>
 
-            <button
+                        <button
               onClick={() => navigate("/login")}
               className="mt-8 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
               style={{ background: HOME_GRADIENT }}
@@ -256,6 +256,27 @@ export default function Home() {
             <p className="mt-6 text-xs text-slate-400">
               No installs &nbsp;·&nbsp; No card required &nbsp;·&nbsp; Any device &nbsp;·&nbsp; Taught by kids
             </p>
+
+            <div className="mt-7 flex items-center gap-3">
+              <div className="flex -space-x-3">
+                <img
+                  src="https://images.unsplash.com/photo-1623076189461-f7706b741c04?auto=format&fit=crop&w=200&h=200&q=80"
+                  alt="A kid coding on a laptop"
+                  className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1597933471507-1ca5765185d8?auto=format&fit=crop&w=200&h=200&q=80"
+                  alt="A kid learning Python on a laptop"
+                  className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1653566031285-8e198bca09d5?auto=format&fit=crop&w=200&h=200&q=80"
+                  alt="A kid excited about a coding project"
+                  className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm"
+                />
+              </div>
+              <p className="text-xs text-slate-400">Real kids, real projects — not stock actors.</p>
+            </div>
           </div>
 
           {/* Live activity card — replaces the old video panel */}
@@ -931,12 +952,31 @@ export default function Home() {
           with cartoon mascots slapped on.
         </h2>
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold">
+               <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold">
           {WHY_STATS.map(({ icon: Icon, label, colorIndex }) => (
             <span key={label} className="inline-flex items-center gap-1.5" style={{ color: PALETTE[colorIndex].text }}>
               <Icon size={13} /> {label}
             </span>
           ))}
+        </div>
+
+        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-3 gap-3">
+          <img
+  src="https://images.unsplash.com/photo-1584651766658-1b7b47a2cb79?auto=format&fit=crop&w=400&h=400&q=80"
+  alt="A kid excitedly interacting with a game he built"
+  className="h-28 w-full rounded-2xl object-cover shadow-sm sm:h-40"
+/>
+         <img
+  src="https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=400&h=400&q=80"
+  alt="Child learning and studying"
+  className="h-28 w-full rounded-2xl object-cover shadow-sm sm:h-40"
+/>
+
+          <img
+  src="https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=400&h=400&q=80"
+  alt="Kids learning together"
+  className="h-28 w-full rounded-2xl object-cover shadow-sm sm:h-40"
+/>
         </div>
       </section>
 

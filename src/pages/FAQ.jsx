@@ -49,9 +49,27 @@ export default function FAQ() {
         <h1 className="font-display mt-4 text-3xl md:text-4xl font-extrabold text-[#241B4E]">
           Frequently Asked <span style={{ color: "#FF5A36" }}>Questions</span>
         </h1>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
+               <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
           Everything you need to know before your child starts their coding journey.
         </p>
+
+        <div className="mx-auto mt-8 grid max-w-2xl grid-cols-3 gap-3">
+          <img
+            src="https://images.unsplash.com/photo-1623076189461-f7706b741c04?auto=format&fit=crop&w=400&h=400&q=80"
+            alt="A kid asking questions while coding"
+            className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
+          />
+          <img
+            src="https://images.unsplash.com/photo-1536148935331-408321065b18?auto=format&fit=crop&w=400&h=400&q=80"
+            alt="A kid figuring things out on a computer"
+            className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
+          />
+          <img
+            src="https://images.unsplash.com/photo-1653566031285-8e198bca09d5?auto=format&fit=crop&w=400&h=400&q=80"
+            alt="A kid happy after getting an answer"
+            className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
+          />
+        </div>
       </section>
 
       <section className="px-8 py-12">
