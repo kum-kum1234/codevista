@@ -60,15 +60,16 @@ export default function FAQ() {
             className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
           />
           <img
-            src="https://images.unsplash.com/photo-1536148935331-408321065b18?auto=format&fit=crop&w=400&h=400&q=80"
-            alt="A kid figuring things out on a computer"
-            className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
-          />
-          <img
-            src="https://images.unsplash.com/photo-1653566031285-8e198bca09d5?auto=format&fit=crop&w=400&h=400&q=80"
-            alt="A kid happy after getting an answer"
-            className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
-          />
+  src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&h=500&q=85"
+  alt="Child learning coding on a laptop"
+  className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
+/>
+
+<img
+  src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&h=500&q=85"
+  alt="Children working together on a coding project"
+  className="h-24 w-full rounded-2xl object-cover shadow-sm sm:h-36"
+/>
         </div>
       </section>
 
