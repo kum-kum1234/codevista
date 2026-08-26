@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Phone, Sparkles, Trophy, Rocket, BookOpen, User, ChevronLeft, Zap, Award, Layers } from "lucide-react";
@@ -52,6 +53,7 @@ export default function Login() {
   // Phone flow sub-stage: "enter" -> "unregistered" -> "otp" -> "create-account"
   const [phoneStage, setPhoneStage] = useState("enter");
   const [otpBoxes, setOtpBoxes] = useState(["", "", "", "", "", ""]);
+  const [testOtp, setTestOtp] = useState("");
   const [resendSeconds, setResendSeconds] = useState(45);
   const otpRefs = useRef([]);
 
@@ -106,16 +108,61 @@ export default function Login() {
     setTimeout(() => {
       setLoading(false);
       // DEMO: always treat the number as unregistered to show the linking screen.
-      // Swap this for a real "does this number exist?" API check.
+      // Swap this for a real "does this number exist?" API check — this step
+      // is separate from OTP sending, which now happens for real in
+      // goToOtpStage() below via the Brevo-backed /api/auth/otp/send route.
       setPhoneStage("unregistered");
     }, 500);
   }
 
-  function goToOtpStage() {
+  // Calls our backend, which uses Brevo to actually send the SMS code to
+  // form.phone. Returns true/false so callers know whether it's safe to
+  // move to the OTP-entry screen.
+  async function sendOtp() {
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: form.phone }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Couldn't send the code. Please try again.");
+      }
+
+      // TEMPORARY DEVELOPMENT ONLY:
+      // The backend returns the generated OTP so it can be tested
+      // without waiting for Brevo SMS delivery.
+      setTestOtp(data.otp);
+      console.log("Generated OTP:", data.otp);
+
+      return true;
+    } catch (err) {
+      console.error("OTP send failed:", err);
+      alert(err.message || "Couldn't send the code. Please check the number and try again.");
+      return false;
+    }
+  }
+
+  async function goToOtpStage() {
+    setLoading(true);
+    const sent = await sendOtp();
+    setLoading(false);
+    if (!sent) return;
+
     setPhoneStage("otp");
     setResendSeconds(45);
     setOtpBoxes(["", "", "", "", "", ""]);
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
+  }
+
+  async function handleResendOtp() {
+    setLoading(true);
+    const sent = await sendOtp();
+    setLoading(false);
+    if (sent) setResendSeconds(45);
   }
 
   function handleOtpBoxChange(index, value) {
@@ -136,14 +183,39 @@ export default function Login() {
     }
   }
 
-  function handleVerifyOtp(e) {
+  async function handleVerifyOtp(e) {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Move on to account creation instead of logging straight in.
+    try {
+      const code = otpBoxes.join("");
+
+      // Ask our backend to check the code against what was generated for
+      // this phone number. NOTE: adjust this response shape to match your
+      // actual backend once you add "is this a new user?" logic — right
+      // now it just confirms the code and always routes to create-account.
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: form.phone, code }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "That code didn't work. Please check it and try again.");
+      }
+
+      // TODO: once your backend tells you whether this phone number
+      // already has an account, branch here like:
+      // if (data.isNewUser) setPhoneStage("create-account");
+      // else { setCurrentUser(data.user); navigate("/dashboard"); }
       setPhoneStage("create-account");
-    }, 500);
+    } catch (err) {
+      console.error("OTP verify failed:", err);
+      alert(err.message || "That code didn't work. Please check it and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleCreateAccountSubmit(e) {
@@ -220,6 +292,7 @@ export default function Login() {
       style={{ background: "linear-gradient(135deg, #F5EEFF 0%, #EAF8FE 60%, #EAFBF1 100%)" }}
     >
       <FontLoader />
+
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 rounded-2xl overflow-hidden shadow-2xl">
         {/* Left panel */}
         <div
@@ -469,17 +542,19 @@ export default function Login() {
                     <div className="space-y-3">
                       <button
                         onClick={goToOtpStage}
-                        className="w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity"
+                        disabled={loading}
+                        className="w-full rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
                         style={{ background: LOGIN_GRADIENT }}
                       >
-                        Create an account with this number
+                        {loading ? "Sending code..." : "Create an account with this number"}
                       </button>
                       <button
                         onClick={goToOtpStage}
-                        className="w-full rounded-xl border-2 px-4 py-3 font-semibold hover:bg-slate-50 transition-colors"
+                        disabled={loading}
+                        className="w-full rounded-xl border-2 px-4 py-3 font-semibold hover:bg-slate-50 transition-colors disabled:opacity-60"
                         style={{ borderColor: "#8B5CF6", color: "#8B5CF6" }}
                       >
-                        Link this number to an existing account
+                        {loading ? "Sending code..." : "Link this number to an existing account"}
                       </button>
                     </div>
 
@@ -501,6 +576,17 @@ export default function Login() {
                     <p className="text-sm text-slate-400 mb-6">
                       A 6-digit code was sent to <span style={{ color: "#8B5CF6" }}>+91{form.phone}</span>.
                     </p>
+
+                    {testOtp && (
+                      <div className="mb-4 rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 text-center">
+                        <p className="text-xs text-slate-500">
+                          Testing OTP
+                        </p>
+                        <p className="text-2xl font-bold tracking-widest text-purple-600">
+                          {testOtp}
+                        </p>
+                      </div>
+                    )}
 
                     <form onSubmit={handleVerifyOtp}>
                       <div className="flex justify-between gap-2 mb-6">
@@ -535,11 +621,12 @@ export default function Login() {
                         <span className="text-slate-400">Resend code in {resendSeconds}s</span>
                       ) : (
                         <button
-                          onClick={() => setResendSeconds(45)}
-                          className="font-medium"
+                          onClick={handleResendOtp}
+                          disabled={loading}
+                          className="font-medium disabled:opacity-60"
                           style={{ color: "#8B5CF6" }}
                         >
-                          Resend code
+                          {loading ? "Sending..." : "Resend code"}
                         </button>
                       )}
                     </div>
