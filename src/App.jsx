@@ -12,9 +12,10 @@ import CoursesMarketing from "./pages/CoursesMarketing";
 import WhyUs from "./pages/WhyUs";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
+import LessonPage from "./components/LessonPage";
+
 import Playground from "./pages/Playground";
 import TurtleArtStudio from "./pages/TurtleArtStudio";
-
 import Achievements from "./pages/Achievements";
 import Community from "./pages/Community";
 import Help from "./pages/Help";
@@ -29,22 +30,29 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Main Pages */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/welcome" element={<Onboarding />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
-       {/* Courses */}
-<Route path="/app/courses" element={<Courses />} />
-<Route path="/courses" element={<CoursesMarketing />} />
-<Route path="/courses/:courseId" element={<CoursePage />} />
+        {/* Courses */}
+        <Route path="/app/courses" element={<Courses />} />
+        <Route path="/courses" element={<CoursesMarketing />} />
+        <Route path="/courses/:courseId" element={<CoursePage />} />
 
-{/* Public Pages */}
-<Route path="/why-us" element={<WhyUs />} />
-<Route path="/faq" element={<FAQ />} />
-<Route path="/contact" element={<Contact />} />
-<Route path="/signup" element={<Login />} />
+        {/* Public Pages */}
+        <Route path="/why-us" element={<WhyUs />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/signup" element={<Login />} />
+
+        {/* Lesson */}
+        <Route
+          path="/lesson/:lessonId"
+          element={<LessonPage />}
+        />
 
         {/* Learning Features */}
         <Route path="/playground" element={<Playground />} />
@@ -52,7 +60,10 @@ export default function App() {
           path="/turtle-art-studio"
           element={<TurtleArtStudio />}
         />
-        <Route path="/code-together" element={<CodeTogether />} />
+        <Route
+          path="/code-together"
+          element={<CodeTogether />}
+        />
         <Route
           path="/python-help-guide"
           element={<PythonHelpGuide />}
@@ -65,6 +76,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/my-timetable" element={<Timetable />} />
         <Route path="/my-notes" element={<Notes />} />
+
       </Routes>
     </BrowserRouter>
   );

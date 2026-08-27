@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Play, Loader2 } from "lucide-react";
 
 const DASH_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
@@ -12,20 +12,31 @@ export function loadPyodideRuntime() {
   pyodideLoadPromise = new Promise((resolve, reject) => {
     if (window.loadPyodide) {
       window
-        .loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` })
+        .loadPyodide({
+          indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+        })
         .then(resolve)
         .catch(reject);
+
       return;
     }
+
     const script = document.createElement("script");
+
     script.src = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/pyodide.js`;
+
     script.onload = () => {
       window
-        .loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` })
+        .loadPyodide({
+          indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+        })
         .then(resolve)
         .catch(reject);
     };
-    script.onerror = () => reject(new Error("Failed to load Pyodide script"));
+
+    script.onerror = () =>
+      reject(new Error("Failed to load Pyodide script"));
+
     document.body.appendChild(script);
   });
 
@@ -36,69 +47,176 @@ export default function CodeRunner({
   title = "✨ A Quick Example to Play With",
   initialCode = "",
   minHeight = 260,
+
+  // Called when Python code executes successfully.
+  onRunSuccess,
+
+  // Optional callback when execution finishes.
+  onRunComplete,
 }) {
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState("");
   const [hasRun, setHasRun] = useState(false);
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
+
   const pyodideRef = useRef(null);
+
+  /*
+   * When a different exercise is opened,
+   * load that exercise's code into the editor.
+   */
+  useEffect(() => {
+    setCode(initialCode || "");
+    setOutput("");
+    setHasRun(false);
+  }, [initialCode]);
 
   const handleRun = useCallback(async () => {
     setRunning(true);
     setHasRun(true);
     setOutput("");
 
+    let executionSuccessful = false;
+
     try {
+      /*
+       * Load Python runtime only once.
+       */
       if (!pyodideRef.current) {
         setStarting(true);
+
         pyodideRef.current = await loadPyodideRuntime();
+
         setStarting(false);
       }
 
       const pyodide = pyodideRef.current;
+
       let captured = "";
 
-      pyodide.setStdout({ batched: (s) => { captured += s + "\n"; } });
-      pyodide.setStderr({ batched: (s) => { captured += s + "\n"; } });
+      /*
+       * Capture normal Python output.
+       */
+      pyodide.setStdout({
+        batched: (s) => {
+          captured += s + "\n";
+        },
+      });
+
+      /*
+       * Capture Python errors.
+       */
+      pyodide.setStderr({
+        batched: (s) => {
+          captured += s + "\n";
+        },
+      });
 
       try {
+        /*
+         * Run the student's code.
+         */
         await pyodide.runPythonAsync(code);
+
+        /*
+         * No Python exception means the exercise
+         * executed successfully.
+         */
+        executionSuccessful = true;
       } catch (err) {
-        captured += (captured ? "\n" : "") + String(err?.message || err);
+        captured +=
+          (captured ? "\n" : "") +
+          String(err?.message || err);
+
+        executionSuccessful = false;
       }
 
       setOutput(captured.trimEnd() || "(no output)");
+
+      /*
+       * Tell LessonPage that this exercise passed.
+       */
+      if (executionSuccessful && onRunSuccess) {
+        onRunSuccess({
+          code,
+          output: captured.trimEnd() || "(no output)",
+        });
+      }
+
+      /*
+       * Notify parent that execution finished.
+       */
+      if (onRunComplete) {
+        onRunComplete({
+          success: executionSuccessful,
+          code,
+          output: captured.trimEnd() || "(no output)",
+        });
+      }
     } catch (err) {
-      setOutput("Couldn't start the Python runtime. Check your connection and try again.");
+      console.error("Python runtime error:", err);
+
+      setOutput(
+        "Couldn't start the Python runtime. Check your connection and try again."
+      );
+
+      if (onRunComplete) {
+        onRunComplete({
+          success: false,
+          code,
+          output: "Couldn't start the Python runtime.",
+        });
+      }
     } finally {
       setRunning(false);
       setStarting(false);
     }
-  }, [code]);
+  }, [code, onRunSuccess, onRunComplete]);
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-2 text-white text-xs font-semibold"
         style={{ background: DASH_GRADIENT }}
       >
-        <span className="flex items-center gap-2">{title}</span>
+        <span className="flex items-center gap-2">
+          {title}
+        </span>
       </div>
 
+      {/* Python controls */}
       <div className="flex items-center justify-between bg-slate-900 px-4 py-2">
-        <span className="text-[10px] text-slate-400">Python 3.11</span>
+        <span className="text-[10px] text-slate-400">
+          Python 3.11
+        </span>
+
         <button
           onClick={handleRun}
           disabled={running}
           className="flex items-center gap-1 rounded bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600 disabled:opacity-60"
         >
-          {running ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
-          {starting ? "Starting..." : running ? "Running..." : "Run"}
+          {running ? (
+            <Loader2
+              size={11}
+              className="animate-spin"
+            />
+          ) : (
+            <Play size={11} />
+          )}
+
+          {starting
+            ? "Starting..."
+            : running
+            ? "Running..."
+            : "Run"}
         </button>
       </div>
 
+      {/* Code + Output */}
       <div className="grid grid-cols-1 md:grid-cols-2">
+        {/* Code editor */}
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
@@ -106,13 +224,20 @@ export default function CodeRunner({
           style={{ minHeight }}
           className="bg-[#1e1e1e] text-slate-300 text-xs p-4 leading-relaxed font-mono resize-none outline-none"
         />
+
+        {/* Output */}
         <pre
           style={{ minHeight }}
           className={`bg-black text-xs p-4 font-mono whitespace-pre-wrap overflow-y-auto ${
-            hasRun ? "text-slate-200" : "text-slate-500"
+            hasRun
+              ? "text-slate-200"
+              : "text-slate-500"
           }`}
         >
-          {hasRun ? output || (running ? "Running..." : "") : "Run the code to see your output here..."}
+          {hasRun
+            ? output ||
+              (running ? "Running..." : "")
+            : "Run the code to see your output here..."}
         </pre>
       </div>
     </div>
