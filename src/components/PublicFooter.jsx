@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { PALETTE } from "../theme/playfulPalette";
 
 // lucide-react removed all brand/logo icons (Facebook, Twitter, Instagram,
@@ -10,6 +11,20 @@ const SOCIALS = [
   { label: "Facebook", initial: "f", color: PALETTE[1].text },
   { label: "X", initial: "X", color: PALETTE[4].text },
   { label: "Instagram", initial: "I", color: PALETTE[5].text },
+];
+
+const LEARN_LINKS = [
+  { label: "Python Starters", to: "/courses/python-starters" },
+  { label: "Python Explorer", to: "/courses/python-explorer" },
+  { label: "Python Creator", to: "/courses/python-creator" },
+  { label: "See All Courses", to: "/courses" },
+];
+
+const SUPPORT_LINKS = [
+  { label: "Community", to: "/community" },
+  { label: "Python Help Guide", to: "/python-help-guide" },
+  { label: "FAQs", to: "/faq" },
+  { label: "Contact Us", to: "/contact" },
 ];
 
 export default function PublicFooter() {
@@ -35,7 +50,7 @@ export default function PublicFooter() {
             <span className="font-display font-extrabold text-[#241B4E]">CodeVista</span>
           </div>
           <p className="mt-2 text-xs text-slate-400 max-w-[200px]">
-            Making Python programming fun and accessible for kids aged 6-14.
+            Bite-sized Python lessons, taught by kids, for kids aged 8–14.
           </p>
           <div className="mt-3 flex gap-2.5">
             {SOCIALS.map(({ label, initial, color }, i) => (
@@ -54,23 +69,31 @@ export default function PublicFooter() {
 
         <div>
           <p className="text-[10px] font-extrabold tracking-wide" style={{ color: PALETTE[0].text }}>
-            COURSES
+            LEARN
           </p>
           <ul className="mt-2 space-y-1.5 text-xs font-semibold text-slate-500">
-            <li>Python Starters</li>
-            <li>Python Explorer</li>
-            <li>Python Creator</li>
+            {LEARN_LINKS.map((item) => (
+              <li key={item.label}>
+                <Link to={item.to} className="hover:text-[#8B5CF6] transition-colors">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
         <div>
           <p className="text-[10px] font-extrabold tracking-wide" style={{ color: PALETTE[1].text }}>
-            RESOURCES
+            SUPPORT
           </p>
           <ul className="mt-2 space-y-1.5 text-xs font-semibold text-slate-500">
-            <li>Community</li>
-            <li>Python Help Guide</li>
-            <li>FAQ</li>
+            {SUPPORT_LINKS.map((item) => (
+              <li key={item.label}>
+                <Link to={item.to} className="hover:text-[#8B5CF6] transition-colors">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -79,17 +102,24 @@ export default function PublicFooter() {
             COMPANY
           </p>
           <ul className="mt-2 space-y-1.5 text-xs font-semibold text-slate-500">
-            <li>Our Story</li>
-            <li>Newsroom</li>
-            <li>Contact</li>
-            <li>Terms of Service</li>
-            <li>Privacy Policy</li>
+            <li>
+              <Link to="/why-us" className="hover:text-[#8B5CF6] transition-colors">
+                Why CodeVista
+              </Link>
+            </li>
+            <li>
+              <Link to="/contact" className="hover:text-[#8B5CF6] transition-colors">
+                Contact
+              </Link>
+            </li>
+            <li className="text-slate-400">Terms of Service</li>
+            <li className="text-slate-400">Privacy Policy</li>
           </ul>
         </div>
       </div>
 
       <div className="mx-auto mt-8 max-w-6xl border-t border-[#F0EAFF] pt-4 text-[10px] text-slate-400">
-        © {new Date().getFullYear()} Gokulam Technologies. All rights reserved.
+        © {new Date().getFullYear()} CodeVista. All rights reserved.
       </div>
     </footer>
   );

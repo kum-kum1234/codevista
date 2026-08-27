@@ -8,10 +8,10 @@ import Dashboard from "./pages/Dashboard";
 
 import Courses from "./pages/Courses";
 import CoursePage from "./pages/CoursePage";
-
+import CoursesMarketing from "./pages/CoursesMarketing";
 import WhyUs from "./pages/WhyUs";
 import FAQ from "./pages/FAQ";
-
+import Contact from "./pages/Contact";
 import Playground from "./pages/Playground";
 import TurtleArtStudio from "./pages/TurtleArtStudio";
 
@@ -35,13 +35,16 @@ export default function App() {
         <Route path="/welcome" element={<Onboarding />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Courses */}
-        <Route path="/app/courses" element={<Courses />} />
-        <Route path="/courses/:courseId" element={<CoursePage />} />
+       {/* Courses */}
+<Route path="/app/courses" element={<Courses />} />
+<Route path="/courses" element={<CoursesMarketing />} />
+<Route path="/courses/:courseId" element={<CoursePage />} />
 
-        {/* Public Pages */}
-        <Route path="/why-us" element={<WhyUs />} />
-        <Route path="/faq" element={<FAQ />} />
+{/* Public Pages */}
+<Route path="/why-us" element={<WhyUs />} />
+<Route path="/faq" element={<FAQ />} />
+<Route path="/contact" element={<Contact />} />
+<Route path="/signup" element={<Login />} />
 
         {/* Learning Features */}
         <Route path="/playground" element={<Playground />} />

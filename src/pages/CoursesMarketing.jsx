@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
+import { COURSES_DATA } from "../data/coursesData";
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 import {
   Search,
@@ -260,7 +261,7 @@ export default function CoursesMarketing() {
         style={{ background: "linear-gradient(135deg, #FFF1EC 0%, #FFF8E1 50%, #F5EEFF 100%)" }}
       >
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#FF5A36] shadow-sm">
-          <BookOpen size={12} /> Python courses for kids aged 6-14
+          <BookOpen size={12} /> Python courses for kids aged 8-14
         </span>
         <h1 className="font-display mt-4 text-3xl md:text-4xl font-extrabold text-[#241B4E]">
           Explore Our Coding{" "}

@@ -20,7 +20,7 @@ const FAQS = [
   },
   {
     q: "What ages is CodeVista built for?",
-    a: "CodeVista is designed for kids aged 7–14, with courses tailored to different stages: Python Starters (7–10), Python Explorer (8+), and Python Creator (11–13+).",
+    a: "CodeVista is designed for kids aged 8–14, with courses tailored to different stages: Python Starters (8–10), Python Explorer (11+), and Python Creator (12–14+).",
   },
   {
     q: "How can I see how far I've come?",

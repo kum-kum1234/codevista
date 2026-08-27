@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Search, Video, Folder } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
 
@@ -7,6 +8,7 @@ const COURSES_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
 const COURSES = [
   {
+    id: "python-starters",
     icon: "🐍",
     badge1: "Premium",
     badge2: "Beginner",
@@ -32,6 +34,7 @@ const COURSES = [
     ],
   },
   {
+    id: "python-explorer",
     icon: "</>",
     badge1: "Premium",
     badge2: "Intermediate",
@@ -56,6 +59,7 @@ const COURSES = [
     ],
   },
   {
+    id: "python-creator",
     icon: "🎨",
     badge1: "Premium",
     badge2: "Advanced",
@@ -80,6 +84,7 @@ const COURSES = [
 ];
 
 export default function Courses() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
   const filtered = COURSES.filter((c) =>
@@ -144,6 +149,7 @@ export default function Courses() {
                   </div>
                 </div>
                 <button
+                  onClick={() => navigate(`/courses/${c.id}`)}
                   className="px-4 py-2.5 text-xs font-bold text-white hover:opacity-90"
                   style={{ background: COURSES_GRADIENT }}
                 >

@@ -7,7 +7,7 @@ import { HelpCircle, ChevronDown } from "lucide-react";
 const FAQS = [
   {
     q: "What age group is CodeVista designed for?",
-    a: "CodeVista is built for kids aged 6–14. Our lessons are taught by kids, for kids, so the pacing and language stay age-appropriate throughout.",
+    a: "CodeVista is built for kids aged 8–14. Our lessons are taught by kids, for kids, so the pacing and language stay age-appropriate throughout.",
   },
   {
     q: "Does my child need any coding experience to start?",

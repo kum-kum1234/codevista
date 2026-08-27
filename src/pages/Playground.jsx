@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import AppLayout from "../components/AppLayout";
 import { useNavigate } from "react-router-dom";
+import { loadPyodideRuntime } from "../components/CodeRunner";
 import {
   Code2,
   ChevronLeft,
@@ -113,6 +114,8 @@ export default function Playground() {
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [running, setRunning] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const pyodideRef = useRef(null);
 
   function selectStarter(starter) {
     setSelected(starter);
@@ -120,18 +123,37 @@ export default function Playground() {
     setOutput("");
   }
 
-  function handleRun() {
+  const handleRun = useCallback(async () => {
     setRunning(true);
     setOutput("Running...");
-    // Demo only — no real Python interpreter in the browser.
-    // Wire this up to Pyodide or a backend execution service for real output.
-    setTimeout(() => {
-      setOutput(
-        "This is a demo playground — connect a real Python runtime (e.g. Pyodide) to execute this code and see live output here."
-      );
+
+    try {
+      if (!pyodideRef.current) {
+        setStarting(true);
+        pyodideRef.current = await loadPyodideRuntime();
+        setStarting(false);
+      }
+
+      const pyodide = pyodideRef.current;
+      let captured = "";
+
+      pyodide.setStdout({ batched: (s) => { captured += s + "\n"; } });
+      pyodide.setStderr({ batched: (s) => { captured += s + "\n"; } });
+
+      try {
+        await pyodide.runPythonAsync(code);
+      } catch (err) {
+        captured += (captured ? "\n" : "") + String(err?.message || err);
+      }
+
+      setOutput(captured.trimEnd() || "(no output)");
+    } catch (err) {
+      setOutput("Couldn't start the Python runtime. Check your connection and try again.");
+    } finally {
       setRunning(false);
-    }, 600);
-  }
+      setStarting(false);
+    }
+  }, [code]);
 
   return (
     <AppLayout active="playground">
@@ -221,9 +243,10 @@ export default function Playground() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRun}
-                  className="flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                  disabled={running}
+                  className="flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
                 >
-                  <Play size={12} /> Run Code
+                  <Play size={12} /> {starting ? "Starting..." : running ? "Running..." : "Run Code"}
                 </button>
                 <button className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100">
                   <Save size={12} /> Save
@@ -258,7 +281,7 @@ export default function Playground() {
                 disabled={running}
                 className="flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
               >
-                <Play size={12} /> {running ? "Running..." : "Run"}
+                <Play size={12} /> {starting ? "Starting..." : running ? "Running..." : "Run"}
               </button>
             </div>
             {/* Code + output split */}

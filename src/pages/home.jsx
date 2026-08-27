@@ -315,7 +315,7 @@ export default function Home() {
               className="mt-8 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
               style={{ background: HOME_GRADIENT }}
             >
-              Try a Lesson, Free <ArrowRight size={16} />
+              Try a Free Lesson <ArrowRight size={16} />
             </button>
 
             <p className="mt-6 text-xs text-slate-300">
@@ -755,7 +755,7 @@ export default function Home() {
             className="mt-4 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
             style={{ background: HOME_GRADIENT }}
           >
-            Try This Lesson Free <ArrowRight size={16} />
+            Try a Free Lesson <ArrowRight size={16} />
           </button>
         </div>
       </section>
@@ -1068,7 +1068,7 @@ export default function Home() {
               className="mt-4 w-full rounded-full px-6 py-3 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
               style={{ background: HOME_GRADIENT }}
             >
-              Start Free Trial
+              Get Full Year Access
             </button>
           </div>
         </div>
@@ -1519,7 +1519,7 @@ export default function Home() {
           className="mt-5 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
           style={{ background: HOME_GRADIENT }}
         >
-          Start Free Trial
+         Get Full Year Access
         </button>
 
         <p className="mt-3 text-[10px] text-slate-400">
