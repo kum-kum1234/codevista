@@ -97,7 +97,7 @@ export default function Contact() {
               <span className="h-2.5 w-2.5 rounded-full bg-[#F87171]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#FBBF24]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#34D399]" />
-              <span className="ml-2 cv-mono text-[11px] text-white/50">new_message.py</span>
+              <span className="ml-2 cv-mono text-[11px] text-white/50"></span>
             </div>
 
             <div className="bg-white p-6">
@@ -116,52 +116,51 @@ export default function Contact() {
                   <p className="mt-1 text-xs text-slate-400">We'll get back to you within a day or two.</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="cv-mono text-[11px] font-semibold" style={{ color: TEAL }}>name =</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E]"
-                      placeholder='"Arjun Sharma"'
-                    />
-                  </div>
-                  <div>
-                    <label className="cv-mono text-[11px] font-semibold" style={{ color: TEAL }}>email =</label>
-                    <input
-                      type="email"
-                      required
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E]"
-                      placeholder='"you@example.com"'
-                    />
-                  </div>
-                  <div>
-                    <label className="cv-mono text-[11px] font-semibold" style={{ color: TEAL }}>message = """</label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={form.message}
-                      onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E] resize-none"
-                      placeholder="How can we help?"
-                    />
-                    <span className="cv-mono text-[11px] font-semibold" style={{ color: TEAL }}>"""</span>
-                  </div>
-                  <button
-                    type="submit"
-                    className="group flex w-full items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 cv-mono text-sm font-semibold text-white transition-colors"
-                    style={{ backgroundColor: INK }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = TEAL)}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = INK)}
-                  >
-                    run send_message()
-                    <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </form>
+               <form onSubmit={handleSubmit} className="space-y-4">
+  <div>
+    <label className="text-xs font-semibold text-slate-500">Your Name</label>
+    <input
+      type="text"
+      required
+      value={form.name}
+      onChange={(e) => setForm({ ...form, name: e.target.value })}
+      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E]"
+      placeholder="Your name"
+    />
+  </div>
+  <div>
+    <label className="text-xs font-semibold text-slate-500">Email Address</label>
+    <input
+      type="email"
+      required
+      value={form.email}
+      onChange={(e) => setForm({ ...form, email: e.target.value })}
+      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E]"
+      placeholder="you@example.com"
+    />
+  </div>
+  <div>
+    <label className="text-xs font-semibold text-slate-500">Message</label>
+    <textarea
+      required
+      rows={4}
+      value={form.message}
+      onChange={(e) => setForm({ ...form, message: e.target.value })}
+      className="mt-1 w-full rounded-lg border-2 border-slate-100 bg-[#F7F9F9] px-3 py-2 text-sm outline-none focus:border-[#0F766E] resize-none"
+      placeholder="How can we help?"
+    />
+  </div>
+  <button
+    type="submit"
+    className="group flex w-full items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+    style={{ backgroundColor: INK }}
+    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = TEAL)}
+    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = INK)}
+  >
+    Send Message
+    <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+  </button>
+</form>
               )}
             </div>
           </div>
