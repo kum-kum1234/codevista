@@ -1,0 +1,55 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#F5EEFF"/>
+
+  <!-- soft blurred blobs -->
+  <g filter="url(#blur1)">
+    <circle cx="120" cy="180" r="220" fill="#E9D5FF"/>
+  </g>
+  <g filter="url(#blur1)">
+    <circle cx="1500" cy="700" r="260" fill="#FBCFE8"/>
+  </g>
+  <g filter="url(#blur1)">
+    <circle cx="60" cy="760" r="160" fill="#BFDBFE"/>
+  </g>
+  <g filter="url(#blur1)">
+    <circle cx="1540" cy="140" r="150" fill="#D9F2E6"/>
+  </g>
+
+  <!-- left dot column -->
+  <g opacity="0.35" fill="#8B5CF6">
+    <circle cx="70" cy="380" r="4"/>
+    <circle cx="110" cy="400" r="4"/>
+    <circle cx="70" cy="420" r="4"/>
+    <circle cx="110" cy="440" r="4"/>
+    <circle cx="70" cy="460" r="4"/>
+    <circle cx="110" cy="480" r="4"/>
+    <circle cx="70" cy="500" r="4"/>
+    <circle cx="110" cy="520" r="4"/>
+    <circle cx="70" cy="540" r="4"/>
+    <circle cx="110" cy="560" r="4"/>
+  </g>
+
+  <!-- right dot column -->
+  <g opacity="0.35" fill="#EC4899">
+    <circle cx="1490" cy="340" r="4"/>
+    <circle cx="1530" cy="360" r="4"/>
+    <circle cx="1490" cy="380" r="4"/>
+    <circle cx="1530" cy="400" r="4"/>
+    <circle cx="1490" cy="420" r="4"/>
+    <circle cx="1530" cy="440" r="4"/>
+    <circle cx="1490" cy="460" r="4"/>
+    <circle cx="1530" cy="480" r="4"/>
+    <circle cx="1490" cy="500" r="4"/>
+    <circle cx="1530" cy="520" r="4"/>
+  </g>
+
+  <!-- faint code-symbol watermarks in the corners -->
+  <text x="30" y="150" font-family="monospace" font-size="140" fill="#8B5CF6" opacity="0.08">{"</>"}</text>
+  <text x="1330" y="860" font-family="monospace" font-size="140" fill="#EC4899" opacity="0.08">{"{ }"}</text>
+
+  <defs>
+    <filter id="blur1" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+</svg>

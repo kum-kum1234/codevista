@@ -4,7 +4,6 @@ import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 import {
-  Sparkles,
   Users2,
   CircleDot,
   Zap,
@@ -16,9 +15,6 @@ import {
   MessageCircle,
   Lightbulb,
   ArrowRight,
-  Award,
-  Landmark,
-  BookMarked,
 } from "lucide-react";
 
 const REASONS = [
@@ -54,12 +50,6 @@ const REASONS = [
   },
 ];
 
-const BADGES = [
-  { icon: Award, label: "Young Innovators", colorIndex: 0 },
-  { icon: Landmark, label: "Oxford Summer Scholars", colorIndex: 1 },
-  { icon: BookMarked, label: "Published Authors", colorIndex: 2 },
-];
-
 export default function WhyUs() {
   const navigate = useNavigate();
 
@@ -68,44 +58,76 @@ export default function WhyUs() {
       <FontLoader />
       <PublicHeader active="why-us" />
 
-      {/* ---------------- Hero ---------------- */}
-      <section
-        className="px-8 py-12 text-center"
-        style={{ background: "linear-gradient(135deg, #FFF1EC 0%, #F5EEFF 50%, #EAF8FE 100%)" }}
-      >
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#FF5A36] shadow-sm">
-          <Sparkles size={12} /> Made by Kids, for Kids
-        </span>
-        <h1 className="font-display mt-4 text-3xl md:text-4xl font-extrabold text-[#241B4E]">
-          Why Learn with{" "}
-          <span
-            className="bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
+      {/* ---------------- Hero: left-aligned editorial layout, not the centered pastel-badge template ---------------- */}
+      <section className="px-8 pt-16 pb-14 bg-white">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-10 items-end">
+          <div>
+            <p className="text-xs font-extrabold tracking-wide" style={{ color: "#FF5A36" }}>
+              WHY CODEVISTA
+            </p>
+            <h1 className="font-display mt-3 text-3xl md:text-5xl font-extrabold leading-[1.1] text-[#241B4E]">
+              Coding taught by kids,
+              <br />
+              not{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
+              >
+                lectured at them.
+              </span>
+            </h1>
+            <p className="mt-4 max-w-md text-sm text-slate-500">
+              Most platforms hand a child an adult curriculum with a cartoon
+              mascot stuck on top. We built ours around one idea: kids explain
+              things to kids better than anyone else can.
+            </p>
+          </div>
+
+          <div
+            className="rounded-2xl p-5 text-white"
+            style={{ backgroundColor: "#241B4E" }}
           >
-            CodeVista?
-          </span>
-        </h1>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
-          The first platform where real kids teach other kids to code in Python — short videos,
-          cool projects, and friendly voices that make Python feel like play.
-        </p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-white/50">
+              In their own words
+            </p>
+            <p className="mt-2 text-sm italic leading-relaxed">
+              "It's the first thing I open after school — not because I have
+              to, because I want to see what breaks next."
+            </p>
+            <p className="mt-3 text-xs font-semibold text-white/60">
+              — Vihaan M., age 10
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* ---------------- Reasons grid ---------------- */}
-      <section className="bg-[#FDFCFA] px-8 py-10">
-        <div className="mx-auto grid max-w-4xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* ---------------- Reasons: alternating list, not a card grid ---------------- */}
+      <section className="bg-[#FDFCFA] px-8 py-16">
+        <div className="mx-auto max-w-3xl">
           {REASONS.map(({ icon: Icon, title, desc }, i) => {
             const c = PALETTE[i % PALETTE.length];
+            const flip = i % 2 === 1;
             return (
-              <div key={title} className="rounded-2xl border-2 bg-white p-4" style={{ borderColor: c.border }}>
+              <div
+                key={title}
+                className={`flex items-start gap-5 py-6 ${
+                  i !== 0 ? "border-t border-slate-100" : ""
+                } ${flip ? "md:flex-row-reverse md:text-right" : ""}`}
+              >
                 <span
-                  className="flex h-9 w-9 items-center justify-center rounded-xl"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                   style={{ backgroundColor: c.bg, color: c.text }}
                 >
-                  <Icon size={16} />
+                  <Icon size={20} />
                 </span>
-                <p className="font-display mt-3 text-sm font-bold text-[#241B4E]">{title}</p>
-                <p className="mt-1 text-xs text-slate-400 leading-relaxed">{desc}</p>
+                <div>
+                  <p className="font-display text-base font-extrabold text-[#241B4E]">
+                    {String(i + 1).padStart(2, "0")}. {title}
+                  </p>
+                  <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">
+                    {desc}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -113,7 +135,7 @@ export default function WhyUs() {
 
         {/* Weekly Code Together */}
         <div
-          className="mx-auto mt-8 max-w-4xl rounded-3xl px-8 py-8 text-center"
+          className="mx-auto mt-12 max-w-3xl rounded-3xl px-8 py-8 text-center"
           style={{ background: "linear-gradient(135deg, #FFF1EC 0%, #FFF8E1 100%)", border: "2px solid #FFD3C2" }}
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-extrabold text-[#FF5A36] shadow-sm">
@@ -153,74 +175,6 @@ export default function WhyUs() {
             Join Code Together <ArrowRight size={13} />
           </button>
         </div>
-
-        {/* Founders */}
-        {/*
-        <div className="mx-auto mt-12 max-w-4xl text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#EC4899] shadow-sm">
-            <Heart size={11} /> Our Story
-          </span>
-          <h2 className="font-display mt-3 text-2xl font-extrabold text-[#241B4E]">
-            Meet the Kids Behind PythonKid
-          </h2>
-          <p className="mx-auto mt-2 max-w-lg text-xs text-slate-500">
-            PythonKid wasn't built in a boardroom — it was built by two 11-year-olds who wanted
-            coding to be fun.
-          </p>
-
-          <div
-            className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 rounded-3xl p-6 text-left items-center"
-            style={{ background: "linear-gradient(135deg, #F5EEFF 0%, #FFEEF6 100%)", border: "2px solid #DFCBFF" }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=450&fit=crop"
-              alt="Sahaj and Sujas, the twin founders of PythonKid"
-              className="h-56 w-full rounded-2xl object-cover md:h-64"
-            />
-
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-[#EC4899]">
-                <Heart size={11} /> THE FOUNDERS
-              </span>
-              <h3 className="font-display mt-2 text-lg font-extrabold text-[#241B4E]">Sahaj &amp; Sujas</h3>
-              <p className="text-xs text-slate-400">Twin Brothers · Aged 11 · Bangalore, India</p>
-
-              <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                Hey! We're Sahaj and Sujas — twin brothers who don't look alike, dress alike, or
-                eat alike... but we do share one big thing: <b className="text-[#241B4E]">we love coding!</b>
-              </p>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                We started learning Python in grade 4. When we looked for courses, everything was
-                too advanced or too boring — and required a parent to sign in. So we thought,
-                "What if kids had friends teaching them instead?" — and PythonKid was born!
-              </p>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                We've published books on Bribooks, won Olympiad medals, and were selected as{" "}
-                <b className="text-[#241B4E]">Oxford Summer School Scholars</b> — among only
-                two chosen from all of India for 2026!
-              </p>
-              <p className="mt-2 text-xs font-bold" style={{ color: "#FF5A36" }}>
-                Happy coding! — Sahaj &amp; Sujas 🧑‍💻 🧑‍💻
-              </p>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {BADGES.map(({ icon: Icon, label, colorIndex }) => {
-                  const c = PALETTE[colorIndex];
-                  return (
-                    <span
-                      key={label}
-                      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold"
-                      style={{ backgroundColor: c.bg, color: c.text }}
-                    >
-                      <Icon size={11} /> {label}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-        */}
       </section>
 
       {/* ---------------- Closing CTA ---------------- */}

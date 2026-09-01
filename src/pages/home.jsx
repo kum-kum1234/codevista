@@ -5,6 +5,8 @@ import PublicFooter from "../components/PublicFooter";
 
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 import AnimatedBackground from "../components/AnimatedBackground";
+import bonusPackBg from "../assets/bonus-pack-bg.svg";
+
 
 import {
   Rocket,
@@ -437,10 +439,10 @@ export default function Home() {
               Mobile view
             </label>
           </div>
-
           <div className="mt-8 flex flex-col md:flex-row items-start justify-center gap-8">
 
-            {/* Desktop browser mockup */}
+            {/* Desktop browser mockup — only when Desktop view is selected */}
+            {view === "desktop" && (
             <div
               className="w-full max-w-3xl rounded-2xl border-2 bg-white shadow-xl overflow-hidden text-left"
               style={{ borderColor: PALETTE[2].border }}
@@ -614,9 +616,11 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Mobile mockup */}
-            <div className="hidden md:flex flex-col items-center">
+            {/* Mobile mockup — only when Mobile view is selected */}
+            {view === "mobile" && (
+            <div className="flex flex-col items-center">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
                 <Smartphone size={13} />
                 Mobile view
@@ -744,8 +748,8 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            )}
           </div>
-
           <p className="mt-8 text-sm text-slate-500">
             This is one lesson out of 26+ — and it's yours to try free.
           </p>
@@ -1093,12 +1097,11 @@ export default function Home() {
         </p>
       </div>
 
-      {/* ---------------- Bonus pack ---------------- */}
-      <section
-        className="px-8 py-20"
-        style={{ backgroundColor: "#F5EEFF" }}
-      >
-        <div className="mx-auto max-w-5xl text-center">
+               {/* ---------------- Bonus pack ---------------- */}
+      <section className="relative overflow-hidden px-8 py-20">
+        <AnimatedBackground />
+
+        <div className="relative z-10 mx-auto max-w6xl text-center">
           <span
             className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold shadow-sm"
             style={{ color: "#8B5CF6" }}
@@ -1107,7 +1110,7 @@ export default function Home() {
             BUNDLED IN, NO EXTRA COST
           </span>
 
-          <h2 className="font-display mt-4 text-2xl md:text-3xl font-extrabold text-[#241B4E]">
+          <h2 className="font-display mt-4 text-2xl md:text-3xl font-extrabold text-white">
             It's more than{" "}
             <span
               className="bg-clip-text text-transparent"
@@ -1117,7 +1120,7 @@ export default function Home() {
             </span>
           </h2>
 
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+                    <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-7 text-left">
             {BONUS_ITEMS.map(
               ({
                 icon: Icon,
@@ -1133,27 +1136,27 @@ export default function Home() {
                 return (
                   <div
                     key={title}
-                    className="rounded-2xl border-2 bg-white p-5"
+                    className="rounded-2xl border-2 bg-white p-7"
                     style={{ borderColor: c.border }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span
-                        className="flex h-8 w-8 items-center justify-center rounded-lg"
+                        className="flex h-12 w-12 items-center justify-center rounded-xl"
                         style={{
                           backgroundColor: c.bg,
                           color: c.text,
                         }}
                       >
-                        <Icon size={15} />
+                        <Icon size={22} />
                       </span>
 
                       <div>
-                        <p className="text-xs font-bold text-[#241B4E]">
+                        <p className="text-base font-bold text-[#241B4E]">
                           {title}
                         </p>
 
                         <p
-                          className="text-[10px] font-semibold"
+                          className="text-xs font-semibold"
                           style={{ color: c.text }}
                         >
                           {tag}
@@ -1163,13 +1166,13 @@ export default function Home() {
 
                     {mockup === "timetable" && (
                       <div
-                        className="mt-3 rounded-lg p-2.5 text-[8px] text-white"
+                        className="mt-4 rounded-lg p-4 text-xs text-white"
                         style={{ backgroundColor: "#241B4E" }}
                       >
                         {["Mon", "Tue", "Wed", "Thu"].map((d, i) => (
                           <div
                             key={d}
-                            className="flex items-center justify-between py-0.5"
+                            className="flex items-center justify-between py-1"
                           >
                             <span className="text-white/50">{d}</span>
 
@@ -1187,10 +1190,10 @@ export default function Home() {
 
                     {mockup === "notes" && (
                       <div
-                        className="mt-3 rounded-lg p-2.5"
+                        className="mt-4 rounded-lg p-4"
                         style={{ backgroundColor: "#241B4E" }}
                       >
-                        <p className="text-[8px] font-bold text-white/70">
+                        <p className="text-xs font-bold text-white/70">
                           MY NOTEBOOK
                         </p>
 
@@ -1201,7 +1204,7 @@ export default function Home() {
                         ].map((n) => (
                           <p
                             key={n}
-                            className="mt-1 text-[8px] text-white/80"
+                            className="mt-1.5 text-xs text-white/80"
                           >
                             • {n}
                           </p>
@@ -1209,17 +1212,17 @@ export default function Home() {
                       </div>
                     )}
 
-                    <p className="mt-3 text-xs text-slate-400 leading-relaxed">
+                    <p className="mt-4 text-sm text-slate-400 leading-relaxed">
                       {desc}
                     </p>
 
                     {footer && (
                       <p
-                        className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold"
+                        className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold"
                         style={{ color: c.text }}
                       >
                         <span
-                          className="h-1.5 w-1.5 rounded-full"
+                          className="h-2 w-2 rounded-full"
                           style={{ backgroundColor: c.solid }}
                         />
                         {footer}
@@ -1229,10 +1232,10 @@ export default function Home() {
                     {mockup === "notes" && (
                       <button
                         onClick={() => navigate("/notes")}
-                        className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold"
+                        className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold"
                         style={{ color: c.text }}
                       >
-                        Open My Notebook <ArrowRight size={11} />
+                        Open My Notebook <ArrowRight size={14} />
                       </button>
                     )}
                   </div>
