@@ -16,7 +16,16 @@ import {
 import { getCurrentUser, initialsFromName } from "../utils/auth";
 import AppLayout from "../components/AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
-
+import {
+  getCommunityPosts,
+  createCommunityPost,
+  deleteCommunityPost,
+  createCommunityQuestion,
+  getCommunitySettings,
+  getCommunityStats,
+  getCommunityLeaderboard,
+  getCommunityChallenges,
+} from "../services/api";
 const COMMUNITY_GRADIENT =
   "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
@@ -39,28 +48,6 @@ const TABS = [
   },
 ];
 
-const FILTER_CATEGORIES = [
-  "All Categories",
-  "Discussion",
-  "Help",
-  "Showcase",
-  "Announcement",
-];
-
-const POST_TYPES = [
-  "General",
-  "Achievement",
-  "Question",
-  "Project Showcase",
-];
-
-const POST_CATEGORIES = [
-  "Discussion",
-  "Help",
-  "Showcase",
-  "Announcement",
-];
-
 const TYPE_STYLES = {
   General: {
     bg: "#FF5A36",
@@ -79,114 +66,6 @@ const TYPE_STYLES = {
     label: "showcase",
   },
 };
-
-const HELP_GUIDELINES = [
-  "Be specific about your problem",
-  "Include your code snippet",
-  "Explain what you expected vs what happened",
-  "Be patient and respectful",
-];
-
-const INITIAL_POSTS = [
-  {
-    id: "seed-1",
-    name: "Noah Rossen",
-    initials: "NR",
-    date: "6/19/2025",
-    type: "General",
-    category: "Discussion",
-    title: "My first week with Python basics",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 25,
-    comments: 1,
-  },
-  {
-    id: "seed-2",
-    name: "Olivia Martinez",
-    initials: "OM",
-    date: "6/19/2025",
-    type: "General",
-    category: "Discussion",
-    title: "What the community has taught me so far",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 25,
-    comments: 1,
-  },
-  {
-    id: "seed-3",
-    name: "Noah Rossen",
-    initials: "NR",
-    date: "6/19/2025",
-    type: "Question",
-    category: "Help",
-    title: "Stuck on a loop, could use a second pair of eyes",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 5,
-    comments: 2,
-  },
-  {
-    id: "seed-4",
-    name: "Rachana Soni",
-    initials: "RS",
-    date: "6/19/2025",
-    type: "General",
-    category: "Discussion",
-    title: "What the community has taught me so far",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 25,
-    comments: 1,
-  },
-  {
-    id: "seed-5",
-    name: "Rachana Soni",
-    initials: "RS",
-    date: "6/19/2025",
-    type: "Project Showcase",
-    category: "Showcase",
-    title: "Built my first turtle art project!",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 5,
-    comments: 3,
-  },
-  {
-    id: "seed-6",
-    name: "Rajya",
-    initials: "R",
-    date: "6/19/2025",
-    type: "Achievement",
-    category: "Discussion",
-    title: "What the community has taught me so far",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 25,
-    comments: 2,
-  },
-  {
-    id: "seed-7",
-    name: "Rajya",
-    initials: "R",
-    date: "6/19/2025",
-    type: "General",
-    category: "Discussion",
-    title: "What the community has taught me so far",
-    content:
-      "Documenting my Python journey here — new discoveries and new mistakes, every single day.",
-    tags: ["python", "learning"],
-    likes: 5,
-    comments: 3,
-  },
-];
 
 function Toast({
   tone,
@@ -253,266 +132,430 @@ function Toast({
 }
 
 export default function Community() {
-  const [activeTab, setActiveTab] =
-    useState("feed");
+  const [activeTab, setActiveTab] = useState("feed");
 
-  const [posts, setPosts] =
-    useState(INITIAL_POSTS);
+  const [posts, setPosts] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [challenges, setChallenges] = useState([]);
 
-  const [showPostModal, setShowPostModal] =
-    useState(false);
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [postTypes, setPostTypes] = useState([]);
+  const [postCategories, setPostCategories] = useState([]);
+  const [helpGuidelines, setHelpGuidelines] = useState([]);
 
-  const [postTitle, setPostTitle] =
-    useState("");
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postType, setPostType] = useState("");
+  const [postCategory, setPostCategory] = useState("");
+  const [postContent, setPostContent] = useState("");
+  const [postCode, setPostCode] = useState("");
+  const [postTags, setPostTags] = useState("");
 
-  const [postType, setPostType] =
-    useState("General");
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
-  const [postCategory, setPostCategory] =
-    useState("Discussion");
+  const [questionDraft, setQuestionDraft] = useState("");
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
 
-  const [postContent, setPostContent] =
-    useState("");
+  const [filterCategoryOpen, setFilterCategoryOpen] = useState(false);
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState("");
+  const [postSearch, setPostSearch] = useState("");
 
-  const [postCode, setPostCode] =
-    useState("");
+  const [toast, setToast] = useState(null);
 
-  const [postTags, setPostTags] =
-    useState("");
+  const [communityStats, setCommunityStats] = useState(null);
+  const [loadingCommunity, setLoadingCommunity] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
-  const [
-    typeDropdownOpen,
-    setTypeDropdownOpen,
-  ] = useState(false);
+  const user = getCurrentUser() || {};
 
-  const [
-    categoryDropdownOpen,
-    setCategoryDropdownOpen,
-  ] = useState(false);
+  const userId =
+    user?.id ||
+    user?._id ||
+    user?.userId ||
+    user?.email ||
+    user?.phone ||
+    "";
+   console.log("CURRENT USER:", user);
+   console.log("CURRENT USER ID:", userId);
+  const userName =
+    user?.name ||
+    user?.username ||
+    "Community Member";
 
-  const [
-    questionDraft,
-    setQuestionDraft,
-  ] = useState("");
+  const userEmail =
+    user?.email ||
+    "";
 
-  const [
-    showQuestionModal,
-    setShowQuestionModal,
-  ] = useState(false);
+  function formatPostDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US");
+  }
 
-  const [
-    filterCategoryOpen,
-    setFilterCategoryOpen,
-  ] = useState(false);
+  function getPostId(post) {
+    return post?._id || post?.postId || post?.id;
+  }
 
-  const [
-    selectedFilterCategory,
-    setSelectedFilterCategory,
-  ] = useState("All Categories");
-
-  const [toast, setToast] =
-    useState(null);
-
-  const user =
-    getCurrentUser() || { name: "Guest" };
-
-  // ==============================
-  // REAL-TIME COMMUNITY SIDEBAR DATA
-  // ==============================
-
-  const [
-    communityStats,
-    setCommunityStats,
-  ] = useState({
-    user: {
-      id: "",
-      username: "",
-      xp: 0,
-      level: 1,
-      xpToNextLevel: 500,
-      xpProgress: 0,
-      posts: 0,
-      streak: 0,
-      lessons: 0,
-      badges: 0,
-      memberSince: "",
-    },
-
-    community: {
-      activeMembers: 0,
-      postsThisWeek: 0,
-      questionsAnswered: 0,
-      averageResponseTime: "0h",
-    },
-
-    topContributors: [],
-  });
-
-  useEffect(() => {
-    const loadCommunityStats =
-      async () => {
-        try {
-          const response =
-            await fetch(
-              "http://localhost:3002/api/community/stats",
-              {
-                method: "GET",
-                credentials: "include",
-              }
-            );
-
-          if (!response.ok) {
-            throw new Error(
-              "Failed to load community statistics"
-            );
-          }
-
-          const data =
-            await response.json();
-
-          setCommunityStats(data);
-        } catch (error) {
-          console.error(
-            "Community stats error:",
-            error
-          );
-        }
-      };
-
-    loadCommunityStats();
-
-    const interval =
-      setInterval(
-        loadCommunityStats,
-        30000
-      );
-
-    return () =>
-      clearInterval(interval);
-  }, []);
-
-  function showToast(
-    tone,
-    title,
-    message
-  ) {
-    setToast({
-      tone,
-      title,
-      message,
-    });
-
-    setTimeout(
-      () => setToast(null),
-      4000
+  function getTypeStyle(type) {
+    return (
+      TYPE_STYLES[type] || {
+        bg: "#64748B",
+        label: String(type || "general").toLowerCase(),
+      }
     );
+  }
+
+  function showToast(tone, title, message) {
+    setToast({ tone, title, message });
+    setTimeout(() => setToast(null), 4000);
   }
 
   function resetPostForm() {
     setPostTitle("");
-    setPostType("General");
-    setPostCategory("Discussion");
+    setPostType(postTypes[0] || "");
+    setPostCategory(postCategories[0] || "");
     setPostContent("");
     setPostCode("");
     setPostTags("");
   }
 
-  function handlePostSubmit(e) {
+  async function loadPosts() {
+    try {
+      setLoadingPosts(true);
+
+      const response = await getCommunityPosts(
+        selectedFilterCategory,
+        postSearch
+      );
+
+      setPosts(response?.posts || []);
+    } catch (error) {
+      console.error("Community posts error:", error);
+      setPosts([]);
+      showToast(
+        "error",
+        "Could not load posts",
+        "Please check your backend connection."
+      );
+    } finally {
+      setLoadingPosts(false);
+    }
+  }
+
+  async function loadCommunityData() {
+    try {
+      setLoadingCommunity(true);
+
+      const requests = [
+        getCommunitySettings(),
+        getCommunityChallenges(),
+        getCommunityLeaderboard(),
+      ];
+
+      if (userId) {
+        requests.push(getCommunityStats(userId));
+      }
+
+      const results = await Promise.all(requests);
+
+      const settingsResponse = results[0];
+      const challengesResponse = results[1];
+      const leaderboardResponse = results[2];
+      const statsResponse = userId ? results[3] : null;
+
+      const settings = settingsResponse?.settings || {};
+
+      const loadedFilterCategories =
+        settings.filterCategories || [];
+      const loadedPostTypes = settings.postTypes || [];
+      const loadedPostCategories =
+        settings.postCategories || [];
+      const loadedGuidelines =
+        settings.helpGuidelines || [];
+
+      setFilterCategories(
+        loadedFilterCategories
+      );
+      setPostTypes(loadedPostTypes);
+      setPostCategories(loadedPostCategories);
+      setHelpGuidelines(loadedGuidelines);
+
+      setSelectedFilterCategory((current) =>
+        current &&
+        loadedFilterCategories.includes(current)
+          ? current
+          : loadedFilterCategories[0] || ""
+      );
+
+      setPostType((current) =>
+        current && loadedPostTypes.includes(current)
+          ? current
+          : loadedPostTypes[0] || ""
+      );
+
+      setPostCategory((current) =>
+        current &&
+        loadedPostCategories.includes(current)
+          ? current
+          : loadedPostCategories[0] || ""
+      );
+
+      setChallenges(
+        challengesResponse?.challenges || []
+      );
+
+      setLeaderboard(
+        leaderboardResponse?.leaderboard || []
+      );
+
+      if (statsResponse?.success) {
+        setCommunityStats(statsResponse);
+      } else {
+        setCommunityStats(null);
+      }
+    } catch (error) {
+      console.error(
+        "Community data error:",
+        error
+      );
+
+      setFilterCategories([]);
+      setPostTypes([]);
+      setPostCategories([]);
+      setHelpGuidelines([]);
+      setChallenges([]);
+      setLeaderboard([]);
+      setCommunityStats(null);
+
+      showToast(
+        "error",
+        "Could not load community data",
+        "Please check your backend connection."
+      );
+    } finally {
+      setLoadingCommunity(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCommunityData();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!filterCategories.length) return;
+
+    const timer = setTimeout(() => {
+      loadPosts();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [selectedFilterCategory, postSearch, filterCategories.length]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const interval = setInterval(() => {
+      getCommunityStats(userId)
+        .then((response) => {
+          if (response?.success) {
+            setCommunityStats(response);
+          }
+        })
+        .catch((error) => {
+          console.error(
+            "Community stats refresh error:",
+            error
+          );
+        });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  async function handlePostSubmit(e) {
     e.preventDefault();
 
-    if (
-      !postTitle.trim() ||
-      !postContent.trim()
-    ) {
+    if (!postTitle.trim() || !postContent.trim()) {
       showToast(
         "error",
         "Please fill required fields",
         "Title and content are required."
       );
-
       return;
     }
 
-    const newPost = {
-      id: `post-${Date.now()}`,
-      name: user.name,
-      initials: initialsFromName(
-        user.name
-      ),
-      date:
-        new Date().toLocaleDateString(
-          "en-US"
+    if (!userId) {
+      showToast(
+        "error",
+        "Sign in required",
+        "Please sign in before creating a post."
+      );
+      return;
+    }
+
+    try {
+      const response = await createCommunityPost({
+        userId,
+        name: userName,
+        initials: initialsFromName(
+          userName
         ),
-      type: postType,
-      category: postCategory,
-      title: postTitle.trim(),
-      content: postContent.trim(),
-      code: postCode.trim(),
-      tags: postTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      likes: 0,
-      comments: 0,
-    };
+        type: postType,
+        category: postCategory,
+        title: postTitle.trim(),
+        content: postContent.trim(),
+        code: postCode.trim(),
+        tags: postTags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      });
 
-    setPosts((prev) => [
-      newPost,
-      ...prev,
-    ]);
+      if (!response?.post) {
+        throw new Error(
+          "Post was not returned by the server."
+        );
+      }
 
-    resetPostForm();
+      setPosts((prev) => [
+        response.post,
+        ...prev,
+      ]);
 
-    setShowPostModal(false);
+      resetPostForm();
+      setShowPostModal(false);
 
-    showToast(
-      "success",
-      "Post created",
-      "Your post has been shared with the community!"
-    );
+      showToast(
+        "success",
+        "Post created",
+        "Your post has been shared with the community!"
+      );
+
+      const refreshedStats = await getCommunityStats(
+        userId
+      );
+
+      if (refreshedStats?.success) {
+        setCommunityStats(refreshedStats);
+      }
+    } catch (error) {
+      console.error(
+        "Create post error:",
+        error
+      );
+
+      showToast(
+        "error",
+        "Post could not be created",
+        "Please try again."
+      );
+    }
   }
 
-  function handleDeletePost(id) {
-    setPosts((prev) =>
-      prev.filter(
-        (p) => p.id !== id
-      )
-    );
+  async function handleDeletePost(postId) {
+    if (!userId || !postId) return;
+
+    try {
+      await deleteCommunityPost(
+        postId,
+        userId
+      );
+
+      setPosts((prev) =>
+        prev.filter(
+          (post) =>
+            getPostId(post) !== postId
+        )
+      );
+
+      const refreshedStats = await getCommunityStats(
+        userId
+      );
+
+      if (refreshedStats?.success) {
+        setCommunityStats(refreshedStats);
+      }
+
+      showToast(
+        "success",
+        "Post deleted",
+        "Your post has been removed."
+      );
+    } catch (error) {
+      console.error(
+        "Delete post error:",
+        error
+      );
+
+      showToast(
+        "error",
+        "Post could not be deleted",
+        "Please try again."
+      );
+    }
   }
 
-  function handleQuestionSubmit(e) {
+  async function handleQuestionSubmit(e) {
     e.preventDefault();
 
-    if (!questionDraft.trim()) {
+    if (!questionDraft.trim()) return;
+
+    if (!userId) {
+      showToast(
+        "error",
+        "Sign in required",
+        "Please sign in before asking a question."
+      );
       return;
     }
 
-    // TODO: wire this up to a real POST /community/questions endpoint
-    console.log(
-      "New question:",
-      questionDraft
-    );
+    try {
+      const response =
+        await createCommunityQuestion({
+          userId,
+          name: userName,
+          initials: initialsFromName(
+            userName
+          ),
+          title:
+            questionDraft.trim(),
+          question:
+            questionDraft.trim(),
+        });
 
-    setQuestionDraft("");
+      if (!response?.question) {
+        throw new Error(
+          "Question was not returned by the server."
+        );
+      }
 
-    setShowQuestionModal(false);
+      setQuestionDraft("");
+      setShowQuestionModal(false);
 
-    showToast(
-      "success",
-      "Question submitted",
-      "Your question has been posted to Get Help."
-    );
+      await loadPosts();
+
+      showToast(
+        "success",
+        "Question submitted",
+        "Your question has been posted to Get Help."
+      );
+    } catch (error) {
+      console.error(
+        "Create question error:",
+        error
+      );
+
+      showToast(
+        "error",
+        "Question could not be submitted",
+        "Please try again."
+      );
+    }
   }
 
-  const visiblePosts =
-    selectedFilterCategory ===
-    "All Categories"
-      ? posts
-      : posts.filter(
-          (p) =>
-            p.category ===
-            selectedFilterCategory
-        );
+  const visiblePosts = posts;
 
   return (
     <AppLayout active="community">
@@ -624,7 +667,7 @@ export default function Community() {
                   >
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">
                       {initialsFromName(
-                        user.name
+                        userName
                       )}
                     </span>
 
@@ -644,6 +687,8 @@ export default function Community() {
 
                       <input
                         type="text"
+                        value={postSearch}
+                        onChange={(e) => setPostSearch(e.target.value)}
                         placeholder="Search posts..."
                         className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-2 text-xs outline-none"
                       />
@@ -688,7 +733,7 @@ export default function Community() {
 
                           <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
 
-                            {FILTER_CATEGORIES.map(
+                            {filterCategories.map(
                               (c) => (
                                 <button
                                   key={c}
@@ -748,21 +793,20 @@ export default function Community() {
 
                   <div className="space-y-3">
 
-                    {visiblePosts.map(
+                    {loadingPosts ? (
+                      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                        Loading posts...
+                      </div>
+                    ) : (
+                      visiblePosts.map(
                       (p) => {
-                        const badge =
-                          TYPE_STYLES[
-                            p.type
-                          ] ||
-                          TYPE_STYLES.General;
+                        const badge = getTypeStyle(p.type);
 
-                        const isOwn =
-                          p.name ===
-                          user.name;
+                        const isOwn = p.userId === userId;
 
                         return (
                           <div
-                            key={p.id}
+                            key={getPostId(p)}
                             className="rounded-xl border border-slate-200 bg-white p-4"
                           >
                             <div className="flex items-start justify-between">
@@ -780,16 +824,16 @@ export default function Community() {
                                   <p className="text-xs font-bold text-[#241B4E]">
                                     {p.name}
 
-                                    <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
-                                      Level 1
-                                    </span>
+                                    {p.level ? (
+                                      <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+                                        Level {p.level}
+                                      </span>
+                                    ) : null}
                                   </p>
 
                                   <p className="text-[10px] text-slate-400">
-                                    {p.date} ·{" "}
-                                    {
-                                      p.category.toLowerCase()
-                                    }
+                                    {formatPostDate(p.createdAt)} ·{" "}
+                                    {String(p.category || '').toLowerCase()}
                                   </p>
                                 </div>
                               </div>
@@ -824,11 +868,11 @@ export default function Community() {
                               </pre>
                             )}
 
-                            {p.tags.length >
+                            {(p.tags || []).length >
                               0 && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
 
-                                {p.tags.map(
+                                {(p.tags || []).map(
                                   (t) => (
                                     <span
                                       key={t}
@@ -870,7 +914,7 @@ export default function Community() {
                                 <button
                                   onClick={() =>
                                     handleDeletePost(
-                                      p.id
+                                      getPostId(p)
                                     )
                                   }
                                   className="text-red-400 hover:text-red-500"
@@ -886,10 +930,10 @@ export default function Community() {
                           </div>
                         );
                       }
+                      )
                     )}
 
-                    {visiblePosts.length ===
-                      0 && (
+                    {!loadingPosts && visiblePosts.length === 0 && (
                       <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
                         No posts in this category yet.
                       </div>
@@ -914,19 +958,21 @@ export default function Community() {
                       }}
                     >
                       {initialsFromName(
-                        user.name
+                        userName
                       )}
                     </span>
 
                     <p className="mt-2 text-sm font-bold text-[#241B4E]">
-                      {user.name}
+                      {userName}
+                    </p>
+
+                    <p className="text-[9px] text-slate-400">
+                      {userEmail}
                     </p>
 
                     <p className="text-[10px] text-slate-400">
                       @
-                      {communityStats
-                        .user
-                        .username ||
+                      {communityStats?.user?.username ||
                         user.name
                           .toLowerCase()
                           .replace(
@@ -938,15 +984,11 @@ export default function Community() {
                     <p className="mt-1 text-xs font-semibold text-yellow-500">
                       ⭐ Level{" "}
                       {
-                        communityStats
-                          .user
-                          .level
+                        communityStats?.user?.level
                       }{" "}
                       ·{" "}
                       {
-                        communityStats
-                          .user
-                          .xp
+                        communityStats?.user?.xp
                       }{" "}
                       XP
                     </p>
@@ -959,9 +1001,7 @@ export default function Community() {
                           width: `${Math.min(
                             Math.max(
                               Number(
-                                communityStats
-                                  .user
-                                  .xpProgress
+                                communityStats?.user?.xpProgress
                               ) || 0,
                               0
                             ),
@@ -976,9 +1016,7 @@ export default function Community() {
 
                     <p className="text-[9px] text-slate-400 mt-1">
                       {
-                        communityStats
-                          .user
-                          .xpToNextLevel
+                        communityStats?.user?.xpToNextLevel
                       }{" "}
                       XP to next level
                     </p>
@@ -1002,9 +1040,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats
-                              .user
-                              .posts
+                            communityStats?.user?.posts
                           }
                         </p>
 
@@ -1030,9 +1066,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats
-                              .user
-                              .streak
+                            communityStats?.user?.streak
                           }
                         </p>
 
@@ -1047,9 +1081,7 @@ export default function Community() {
 
                         <p className="text-sm font-bold text-green-600">
                           {
-                            communityStats
-                              .user
-                              .lessons
+                            communityStats?.user?.lessons
                           }
                         </p>
 
@@ -1076,9 +1108,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats
-                              .user
-                              .badges
+                            communityStats?.user?.badges
                           }
                         </p>
 
@@ -1093,13 +1123,9 @@ export default function Community() {
 
                       🚩 Member since{" "}
 
-                      {communityStats
-                        .user
-                        .memberSince
+                      {communityStats?.user?.memberSince
                         ? new Date(
-                            communityStats
-                              .user
-                              .memberSince
+                            communityStats?.user?.memberSince
                           ).toLocaleDateString(
                             "en-US"
                           )
@@ -1117,15 +1143,10 @@ export default function Community() {
                       🏆 Top Contributors
                     </p>
 
-                    {communityStats
-                      .topContributors
-                      ?.length > 0 ? (
+                    {(communityStats?.topContributors?.length > 0 || leaderboard.length > 0) ? (
                       <div className="space-y-2">
 
-                        {communityStats
-                          .topContributors
-                          .slice(0, 5)
-                          .map(
+                        {(communityStats?.topContributors || leaderboard).slice(0, 5).map(
                             (
                               contributor,
                               index
@@ -1207,9 +1228,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats
-                            .community
-                            .activeMembers
+                          communityStats?.community?.activeMembers
                         }
                       </span>
 
@@ -1223,9 +1242,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats
-                            .community
-                            .postsThisWeek
+                          communityStats?.community?.postsThisWeek
                         }
                       </span>
 
@@ -1239,9 +1256,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats
-                            .community
-                            .questionsAnswered
+                          communityStats?.community?.questionsAnswered
                         }
                       </span>
 
@@ -1255,9 +1270,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats
-                            .community
-                            .averageResponseTime
+                          communityStats?.community?.averageResponseTime
                         }
                       </span>
 
@@ -1268,61 +1281,39 @@ export default function Community() {
                   {/* This Week's Challenges */}
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-
                     <p className="text-xs font-bold text-[#241B4E] mb-2">
                       This Week's Challenges
                     </p>
 
-                    <div
-                      className="rounded-lg p-2 mb-2"
-                      style={{
-                        backgroundColor:
-                          "#F5EEFF",
-                      }}
-                    >
-
-                      <p
-                        className="text-xs font-bold"
-                        style={{
-                          color:
-                            "#8B5CF6",
-                        }}
-                      >
-                        Python Puzzle Week
+                    {challenges.length > 0 ? (
+                      challenges.map((challenge, index) => (
+                        <div
+                          key={challenge.challengeId || challenge._id || index}
+                          className={`rounded-lg p-2 ${index === 0 ? "mb-2" : ""} ${challenge.colorType === "green" ? "bg-green-50" : ""}`}
+                          style={challenge.colorType === "green" ? undefined : { backgroundColor: "#F5EEFF" }}
+                        >
+                          <p
+                            className={`text-xs font-bold ${challenge.colorType === "green" ? "text-green-600" : ""}`}
+                            style={challenge.colorType === "green" ? undefined : { color: "#8B5CF6" }}
+                          >
+                            {challenge.title}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {challenge.description}
+                          </p>
+                          <p
+                            className={`text-[9px] mt-1 ${challenge.colorType === "green" ? "text-green-600" : ""}`}
+                            style={challenge.colorType === "green" ? undefined : { color: "#8B5CF6" }}
+                          >
+                            {challenge.daysLeft} days left
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[10px] text-slate-400">
+                        No active challenges
                       </p>
-
-                      <p className="text-[10px] text-slate-500">
-                        Crack 5 coding puzzles and earn a special badge.
-                      </p>
-
-                      <p
-                        className="text-[9px] mt-1"
-                        style={{
-                          color:
-                            "#8B5CF6",
-                        }}
-                      >
-                        3 days left
-                      </p>
-
-                    </div>
-
-                    <div className="rounded-lg bg-green-50 p-2">
-
-                      <p className="text-xs font-bold text-green-600">
-                        Helper Hero
-                      </p>
-
-                      <p className="text-[10px] text-slate-500">
-                        Answer 5 questions from other members this week.
-                      </p>
-
-                      <p className="text-[9px] text-green-600 mt-1">
-                        5 days left
-                      </p>
-
-                    </div>
-
+                    )}
                   </div>
 
                 </div>
@@ -1336,55 +1327,84 @@ export default function Community() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5">
-
                   <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E] mb-4">
                     <Crown
                       size={16}
-                      style={{
-                        color:
-                          "#E8A400",
-                      }}
+                      style={{ color: "#E8A400" }}
                     />
-
                     Points Leaderboard
                   </p>
 
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-
-                    <Trophy
-                      size={32}
-                      className="text-slate-200"
-                    />
-
-                    <p className="mt-3 text-sm font-semibold text-slate-400">
-                      No rankings yet
-                    </p>
-
-                    <p className="mt-1 text-xs text-slate-400 max-w-[220px]">
-                      Earn XP by completing lessons and posting in the community to climb the leaderboard.
-                    </p>
-
-                  </div>
+                  {leaderboard.length > 0 ? (
+                    <div className="space-y-3">
+                      {leaderboard.map((entry) => (
+                        <div
+                          key={entry.id || entry._id || entry.rank}
+                          className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 text-center text-xs font-bold text-slate-400">
+                              {entry.rank}
+                            </span>
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: COMMUNITY_GRADIENT }}>
+                              {initialsFromName(entry.name || "U")}
+                            </span>
+                            <div>
+                              <p className="text-xs font-semibold text-[#241B4E]">
+                                {entry.name}
+                              </p>
+                              <p className="text-[8px] text-slate-400">
+                                Level {entry.level}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-[#8B5CF6]">
+                            {entry.xp} XP
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <Trophy size={32} className="text-slate-200" />
+                      <p className="mt-3 text-sm font-semibold text-slate-400">
+                        No rankings yet
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5">
-
                   <p className="text-sm font-bold text-[#241B4E] mb-4">
                     Achievement Showcase
                   </p>
 
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-
-                    <Sparkles
-                      size={32}
-                      className="text-slate-200"
-                    />
-
-                    <p className="mt-3 text-sm text-slate-400">
-                      Recent community achievements will appear here!
-                    </p>
-
-                  </div>
+                  {leaderboard.some((entry) => Number(entry.badges) > 0) ? (
+                    <div className="space-y-3">
+                      {leaderboard
+                        .filter((entry) => Number(entry.badges) > 0)
+                        .map((entry) => (
+                          <div key={entry.id || entry._id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={14} style={{ color: "#8B5CF6" }} />
+                              <p className="text-xs font-semibold text-[#241B4E]">
+                                {entry.name}
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-bold text-[#8B5CF6]">
+                              {entry.badges} badges
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <Sparkles size={32} className="text-slate-200" />
+                      <p className="mt-3 text-sm text-slate-400">
+                        No community achievements yet.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -1438,7 +1458,7 @@ export default function Community() {
 
                   <ul className="space-y-1.5">
 
-                    {HELP_GUIDELINES.map(
+                    {helpGuidelines.map(
                       (g) => (
                         <li
                           key={g}
@@ -1554,7 +1574,7 @@ export default function Community() {
 
                         <div className="absolute left-0 z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
 
-                          {POST_TYPES.map(
+                          {postTypes.map(
                             (t) => (
                               <button
                                 key={t}
@@ -1643,7 +1663,7 @@ export default function Community() {
 
                         <div className="absolute left-0 z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
 
-                          {POST_CATEGORIES.map(
+                          {postCategories.map(
                             (c) => (
                               <button
                                 key={c}

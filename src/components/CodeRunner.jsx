@@ -48,7 +48,6 @@ export default function CodeRunner({
   initialCode = "",
   minHeight = 260,
 
-  // Called when Python code executes successfully.
   onRunSuccess,
 
   // Optional callback when execution finishes.

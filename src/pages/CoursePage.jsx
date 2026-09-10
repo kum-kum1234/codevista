@@ -55,6 +55,7 @@ export default function CoursePage() {
   return (
     <CourseDetailPage
       active="dashboard"
+      courseId={courseId}
       title={course.title}
       description={course.description}
       level={course.level}

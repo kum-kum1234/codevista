@@ -156,10 +156,10 @@ function ExerciseList({
           completedExercises.includes(exerciseId);
 
         const exerciseCode =
-          ex.code ||
-          ex.starterCode ||
-          fallbackCode;
-
+  ex.initialCode ||
+  ex.code ||
+  ex.starterCode ||
+  fallbackCode;
         return (
           <div
             key={exerciseId}
@@ -325,42 +325,24 @@ export default function LessonPage() {
   }
 
   /*
-   * Download a PDF.
+   * Download a PDF directly from the frontend public folder.
+   * This avoids fetch/CORS problems and lets the browser handle
+   * the download normally.
    */
-  async function downloadPdf(url, filename) {
-    if (!url) return;
-
-    try {
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("PDF download failed");
-      }
-
-      const blob = await response.blob();
-      const blobUrl =
-        window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = blobUrl;
-      link.download = filename;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("PDF download failed:", error);
-
-      /*
-       * Cross-origin PDF servers may block fetch().
-       * Open the PDF normally so the learner can
-       * still view/save it from the browser.
-       */
-      openPdf(url);
+  function downloadPdf(url, filename) {
+    if (!url) {
+      console.error("PDF URL is missing");
+      return;
     }
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_self";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   if (loading) {
@@ -408,6 +390,19 @@ export default function LessonPage() {
           )
         )
       : 0;
+
+  /*
+   * PDF files are stored in frontend/public/pdfs.
+   * Use the API URL when it exists, otherwise use the local
+   * public-folder path so the buttons still work.
+   */
+  const notesPdfUrl =
+    lesson.summary?.notesPdfUrl ||
+    `/pdfs/${lesson.lessonId}-notes.pdf`;
+
+  const solutionsPdfUrl =
+    lesson.summary?.solutionsPdfUrl ||
+    `/pdfs/${lesson.lessonId}-solutions.pdf`;
 
   return (
     <AppLayout active="dashboard">
@@ -889,32 +884,20 @@ export default function LessonPage() {
                   </p>
 
                   <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        openPdf(
-                          lesson.summary?.notesPdfUrl
-                        )
-                      }
-                      disabled={
-                        !lesson.summary?.notesPdfUrl
-                      }
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-semibold text-[#241B4E] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href={notesPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-semibold text-[#241B4E] hover:bg-slate-50"
                     >
                       <Eye size={11} />
                       Preview
-                    </button>
+                    </a>
 
-                    <button
-                      onClick={() =>
-                        downloadPdf(
-                          lesson.summary?.notesPdfUrl,
-                          `${lesson.lessonId}-notes.pdf`
-                        )
-                      }
-                      disabled={
-                        !lesson.summary?.notesPdfUrl
-                      }
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href={notesPdfUrl}
+                      download={`${lesson.lessonId}-notes.pdf`}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90"
                       style={{
                         background:
                           DASH_GRADIENT,
@@ -922,7 +905,7 @@ export default function LessonPage() {
                     >
                       <Download size={11} />
                       Download
-                    </button>
+                    </a>
                   </div>
                 </div>
 
@@ -937,36 +920,20 @@ export default function LessonPage() {
                   </p>
 
                   <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        openPdf(
-                          lesson.summary
-                            ?.solutionsPdfUrl
-                        )
-                      }
-                      disabled={
-                        !lesson.summary
-                          ?.solutionsPdfUrl
-                      }
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-semibold text-[#241B4E] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href={solutionsPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-semibold text-[#241B4E] hover:bg-slate-50"
                     >
                       <Eye size={11} />
                       Preview
-                    </button>
+                    </a>
 
-                    <button
-                      onClick={() =>
-                        downloadPdf(
-                          lesson.summary
-                            ?.solutionsPdfUrl,
-                          `${lesson.lessonId}-solutions.pdf`
-                        )
-                      }
-                      disabled={
-                        !lesson.summary
-                          ?.solutionsPdfUrl
-                      }
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href={solutionsPdfUrl}
+                      download={`${lesson.lessonId}-solutions.pdf`}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90"
                       style={{
                         background:
                           DASH_GRADIENT,
@@ -974,7 +941,7 @@ export default function LessonPage() {
                     >
                       <Download size={11} />
                       Download
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>

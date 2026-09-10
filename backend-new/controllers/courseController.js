@@ -1,8 +1,68 @@
 const Course = require("../models/Course");
+const Profile = require("../models/Profile");
+const {
+    sendNotificationToUser
+} = require("../services/notificationService");
+
+
+// ============================================================
+// SEND COURSE NOTIFICATION
+// ============================================================
+
+const notifyCourseUsers = async ({
+    type,
+    title,
+    message,
+    courseId
+}) => {
+    try {
+        const profiles = await Profile.find({
+            active: true
+        }).select("userId");
+
+        await Promise.allSettled(
+            profiles
+                .filter((profile) => profile.userId)
+                .map((profile) =>
+                    sendNotificationToUser({
+                        userId: profile.userId,
+                        type: "course",
+                        title,
+                        message,
+                        link: courseId
+                            ? `/courses/${courseId}`
+                            : "/courses",
+                        data: {
+                            courseId: courseId || ""
+                        }
+                    })
+                )
+        );
+
+    } catch (error) {
+        console.error(
+            "Course notification error:",
+            error.message
+        );
+    }
+};
+
+
+// ============================================================
+// CREATE COURSE
+// ============================================================
 
 const createCourse = async (req, res) => {
     try {
         const course = await Course.create(req.body);
+
+        // Send notification after course is successfully created
+        await notifyCourseUsers({
+            type: "course",
+            title: "New Course Available",
+            message: `${course.courseTitle || course.title || "A new course"} is now available on CodeVista.`,
+            courseId: course.courseId
+        });
 
         res.status(201).json({
             success: true,
@@ -17,6 +77,10 @@ const createCourse = async (req, res) => {
     }
 };
 
+
+// ============================================================
+// GET ALL COURSES
+// ============================================================
 
 const getCourses = async (req, res) => {
     try {
@@ -35,6 +99,10 @@ const getCourses = async (req, res) => {
     }
 };
 
+
+// ============================================================
+// GET COURSE BY ID
+// ============================================================
 
 const getCourseById = async (req, res) => {
     try {
@@ -63,6 +131,10 @@ const getCourseById = async (req, res) => {
 };
 
 
+// ============================================================
+// UPDATE COURSE
+// ============================================================
+
 const updateCourse = async (req, res) => {
     try {
         const course = await Course.findOneAndUpdate(
@@ -83,6 +155,14 @@ const updateCourse = async (req, res) => {
             });
         }
 
+        // Send notification after course is successfully updated
+        await notifyCourseUsers({
+            type: "course",
+            title: "Course Updated",
+            message: `${course.courseTitle || course.title || "A course"} has been updated on CodeVista.`,
+            courseId: course.courseId
+        });
+
         res.status(200).json({
             success: true,
             course
@@ -97,6 +177,10 @@ const updateCourse = async (req, res) => {
 };
 
 
+// ============================================================
+// DELETE COURSE
+// ============================================================
+
 const deleteCourse = async (req, res) => {
     try {
         const course = await Course.findOneAndDelete({
@@ -109,6 +193,14 @@ const deleteCourse = async (req, res) => {
                 message: "Course not found"
             });
         }
+
+        // Send notification after course is successfully deleted
+        await notifyCourseUsers({
+            type: "course",
+            title: "Course Removed",
+            message: `${course.courseTitle || course.title || "A course"} has been removed from CodeVista.`,
+            courseId: course.courseId
+        });
 
         res.status(200).json({
             success: true,

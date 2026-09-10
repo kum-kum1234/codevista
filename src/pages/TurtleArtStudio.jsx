@@ -13,72 +13,12 @@ import {
 import AppLayout from "../components/AppLayout";
 import { loadPyodideRuntime } from "../components/CodeRunner";
 import { getCurrentUser } from "../utils/auth";
-
-const DEFAULT_CODE = `import turtle
-
-# 🐢 Welcome to the Turtle Art Studio!
-# Anything you can imagine, you can draw here.
-# Try tweaking the colors, sizes, and angles below.
-
-colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink']
-t = turtle.Turtle()
-t.speed(3)
-t.hideturtle()
-
-for i in range(72):
-    t.color(colors[i % 7])
-    t.forward(i * 2)
-    t.right(61)
-`;
-
-const TEMPLATES = [
-  { name: "Spiral", code: DEFAULT_CODE },
-  {
-    name: "Star",
-    code: `import turtle
-
-t = turtle.Turtle()
-t.speed(5)
-t.color("gold")
-t.pensize(3)
-
-for i in range(5):
-    t.forward(200)
-    t.right(144)
-`,
-  },
-  {
-    name: "Flower",
-    code: `import turtle
-
-t = turtle.Turtle()
-t.speed(0)
-colors = ['red', 'orange', 'yellow', 'purple', 'pink']
-
-for i in range(36):
-    t.color(colors[i % 5])
-    t.circle(60)
-    t.right(10)
-`,
-  },
-  {
-    name: "Rainbow Square",
-    code: `import turtle
-
-t = turtle.Turtle()
-t.speed(3)
-t.pensize(4)
-colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
-
-for i in range(60):
-    t.color(colors[i % 6])
-    t.forward(i * 3)
-    t.left(91)
-`,
-  },
-];
-
-const SWATCHES = ["#EF4444", "#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6", "#EC4899", "#111827"];
+import {
+  getTurtleTemplates,
+  getTurtleSettings,
+  saveTurtleProject,
+  updateTurtleProject,
+} from "../services/api";
 
 // --- Python-side shim: fakes the `turtle` module so `import turtle` in the
 // user's code works inside Pyodide, and every drawing call forwards to the
@@ -92,8 +32,8 @@ class _Turtle:
         self.y = 0.0
         self.heading_deg = 0.0
         self.pen_down = True
-        self.pen_color = 'black'
-        self.fill_color = 'black'
+        self.pen_color = _t_default_color
+        self.fill_color = _t_default_color
         self.pen_width = 1
         self.visible = True
         self.filling = False
@@ -308,14 +248,8 @@ _turtle_module.colormode = _screen.colormode
 sys.modules['turtle'] = _turtle_module
 `;
 
-function saveKey() {
-  const user = getCurrentUser?.();
-  const id = user?.email || user?.phone || "guest";
-  return `codevista_turtle_art_${id}`;
-}
-
 export default function TurtleArtStudio() {
-  const [code, setCode] = useState(DEFAULT_CODE);
+  const [code, setCode] = useState("");
   const [penColor, setPenColor] = useState("#8B5CF6");
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -324,11 +258,64 @@ export default function TurtleArtStudio() {
   const [savedFlash, setSavedFlash] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showColours, setShowColours] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [swatches, setSwatches] = useState([]);
+  const [defaultTemplate, setDefaultTemplate] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [loadingStudio, setLoadingStudio] = useState(true);
 
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const pyodideRef = useRef(null);
   const fillPointsRef = useRef([]);
+
+  useEffect(() => {
+    const loadStudioData = async () => {
+      try {
+        setLoadingStudio(true);
+
+        const [templateResponse, settingsResponse] =
+          await Promise.all([
+            getTurtleTemplates(),
+            getTurtleSettings(),
+          ]);
+
+        const loadedTemplates =
+          templateResponse?.templates || [];
+        const settings = settingsResponse?.settings;
+        const firstTemplate = loadedTemplates[0] || null;
+
+        setTemplates(loadedTemplates);
+        setDefaultTemplate(firstTemplate);
+        setSwatches(settings?.swatches || []);
+
+        if (firstTemplate?.code) {
+          setCode(firstTemplate.code);
+        }
+
+        if (settings?.defaultPenColor) {
+          setPenColor(settings.defaultPenColor);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load Turtle Studio data:",
+          error
+        );
+
+        setTemplates([]);
+        setSwatches([]);
+        setDefaultTemplate(null);
+        setCode("");
+        setError(
+          "Couldn't load Turtle Studio data. Check your backend connection."
+        );
+      } finally {
+        setLoadingStudio(false);
+      }
+    };
+
+    loadStudioData();
+  }, []);
 
   // Keep the canvas's pixel resolution matched to its displayed size.
   useEffect(() => {
@@ -336,24 +323,37 @@ export default function TurtleArtStudio() {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
+
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
     }
+
     resize();
     window.addEventListener("resize", resize);
+
     return () => window.removeEventListener("resize", resize);
   }, []);
 
   const toCanvasCoords = (x, y) => {
     const canvas = canvasRef.current;
-    return [canvas.width / 2 + x, canvas.height / 2 - y];
+    return [
+      canvas.width / 2 + x,
+      canvas.height / 2 - y,
+    ];
   };
 
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
     fillPointsRef.current = [];
   }, []);
 
@@ -366,96 +366,188 @@ export default function TurtleArtStudio() {
     try {
       if (!pyodideRef.current) {
         setStarting(true);
-        pyodideRef.current = await loadPyodideRuntime();
+        pyodideRef.current =
+          await loadPyodideRuntime();
         setStarting(false);
       }
+
       const pyodide = pyodideRef.current;
+
+      pyodide.globals.set(
+        "_t_default_color",
+        penColor
+      );
 
       // --- JS bridge: each function reads canvasRef.current fresh, so it
       // always draws onto the current canvas even after a resize.
-      pyodide.globals.set("_t_line", (x1, y1, x2, y2, color, width) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        const [cx1, cy1] = toCanvasCoords(x1, y1);
-        const [cx2, cy2] = toCanvasCoords(x2, y2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(cx1, cy1);
-        ctx.lineTo(cx2, cy2);
-        ctx.stroke();
-      });
+      pyodide.globals.set(
+        "_t_line",
+        (x1, y1, x2, y2, color, width) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
 
-      pyodide.globals.set("_t_clear", () => clearCanvas());
+          const ctx = canvas.getContext("2d");
+          const [cx1, cy1] =
+            toCanvasCoords(x1, y1);
+          const [cx2, cy2] =
+            toCanvasCoords(x2, y2);
 
-      pyodide.globals.set("_t_begin_fill", () => {
-        fillPointsRef.current = [];
-      });
-
-      pyodide.globals.set("_t_add_fill_point", (x, y) => {
-        fillPointsRef.current.push(toCanvasCoords(x, y));
-      });
-
-      pyodide.globals.set("_t_end_fill", (color) => {
-        const pts = fillPointsRef.current;
-        const canvas = canvasRef.current;
-        if (!canvas || pts.length < 3) {
-          fillPointsRef.current = [];
-          return;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(cx1, cy1);
+          ctx.lineTo(cx2, cy2);
+          ctx.stroke();
         }
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.closePath();
-        ctx.fill();
-        fillPointsRef.current = [];
-      });
+      );
 
-      pyodide.globals.set("_t_dot", (x, y, size, color) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        const [cx, cy] = toCanvasCoords(x, y);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      pyodide.globals.set(
+        "_t_clear",
+        () => clearCanvas()
+      );
 
-      pyodide.globals.set("_t_write", (x, y, text, color) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        const [cx, cy] = toCanvasCoords(x, y);
-        ctx.fillStyle = color;
-        ctx.font = "12px sans-serif";
-        ctx.fillText(text, cx, cy);
-      });
+      pyodide.globals.set(
+        "_t_begin_fill",
+        () => {
+          fillPointsRef.current = [];
+        }
+      );
+
+      pyodide.globals.set(
+        "_t_add_fill_point",
+        (x, y) => {
+          fillPointsRef.current.push(
+            toCanvasCoords(x, y)
+          );
+        }
+      );
+
+      pyodide.globals.set(
+        "_t_end_fill",
+        (color) => {
+          const pts =
+            fillPointsRef.current;
+          const canvas = canvasRef.current;
+
+          if (!canvas || pts.length < 3) {
+            fillPointsRef.current = [];
+            return;
+          }
+
+          const ctx = canvas.getContext("2d");
+
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(
+            pts[0][0],
+            pts[0][1]
+          );
+
+          for (
+            let i = 1;
+            i < pts.length;
+            i++
+          ) {
+            ctx.lineTo(
+              pts[i][0],
+              pts[i][1]
+            );
+          }
+
+          ctx.closePath();
+          ctx.fill();
+
+          fillPointsRef.current = [];
+        }
+      );
+
+      pyodide.globals.set(
+        "_t_dot",
+        (x, y, size, color) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+
+          const ctx =
+            canvas.getContext("2d");
+          const [cx, cy] =
+            toCanvasCoords(x, y);
+
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(
+            cx,
+            cy,
+            size / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+      );
+
+      pyodide.globals.set(
+        "_t_write",
+        (x, y, text, color) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+
+          const ctx =
+            canvas.getContext("2d");
+          const [cx, cy] =
+            toCanvasCoords(x, y);
+
+          ctx.fillStyle = color;
+          ctx.font =
+            "12px sans-serif";
+          ctx.fillText(
+            text,
+            cx,
+            cy
+          );
+        }
+      );
 
       let captured = "";
-      pyodide.setStdout({ batched: (s) => { captured += s + "\n"; } });
-      pyodide.setStderr({ batched: (s) => { captured += s + "\n"; } });
 
-      await pyodide.runPythonAsync(TURTLE_SHIM);
+      pyodide.setStdout({
+        batched: (s) => {
+          captured += s + "\n";
+        },
+      });
+
+      pyodide.setStderr({
+        batched: (s) => {
+          captured += s + "\n";
+        },
+      });
+
+      await pyodide.runPythonAsync(
+        TURTLE_SHIM
+      );
 
       try {
-        await pyodide.runPythonAsync(code);
+        await pyodide.runPythonAsync(
+          code
+        );
       } catch (err) {
-        captured += (captured ? "\n" : "") + String(err?.message || err);
+        captured +=
+          (captured ? "\n" : "") +
+          String(
+            err?.message || err
+          );
       }
 
       setError(captured.trim());
     } catch (err) {
-      setError("Couldn't start the Python runtime. Check your connection and try again.");
+      setError(
+        "Couldn't start the Python runtime. Check your connection and try again."
+      );
     } finally {
       setRunning(false);
       setStarting(false);
     }
-  }, [code, clearCanvas]);
+  }, [code, clearCanvas, penColor]);
 
   function handleClear() {
     clearCanvas();
@@ -463,25 +555,164 @@ export default function TurtleArtStudio() {
   }
 
   function handleReset() {
-    setCode(DEFAULT_CODE);
+    setCode(
+      defaultTemplate?.code || ""
+    );
     clearCanvas();
     setError("");
     setHasRun(false);
+    setSelectedProject(null);
   }
 
-  function handleSave() {
+  async function handleSave() {
     try {
-      localStorage.setItem(saveKey(), JSON.stringify({ code, savedAt: Date.now() }));
+      const user = getCurrentUser?.();
+
+      const userId =
+        user?.email ||
+        user?.phone ||
+        "guest";
+
+      if (!code.trim()) {
+        setError("There is no code to save.");
+        return;
+      }
+
+      setError("");
+
+      const fileName = (
+        selectedProject?.title ||
+        defaultTemplate?.name ||
+        "turtle-art-project"
+      )
+        .trim()
+        .replace(/[^a-z0-9-_ ]/gi, "")
+        .replace(/\s+/g, "-")
+        .toLowerCase();
+
+      // =====================================================
+      // SAVE CODE AS .PY FILE
+      // =====================================================
+
+      if ("showSaveFilePicker" in window) {
+        const fileHandle =
+          await window.showSaveFilePicker({
+            suggestedName: `${fileName || "turtle-art-project"}.py`,
+            types: [
+              {
+                description: "Python File",
+                accept: {
+                  "text/x-python": [".py"],
+                },
+              },
+            ],
+          });
+
+        const writable =
+          await fileHandle.createWritable();
+
+        await writable.write(code);
+        await writable.close();
+      } else {
+        // Browser fallback
+        const blob = new Blob(
+          [code],
+          {
+            type: "text/x-python",
+          }
+        );
+
+        const url =
+          URL.createObjectURL(blob);
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+        link.download =
+          `${fileName || "turtle-art-project"}.py`;
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
+      }
+
+      // =====================================================
+      // ALSO SAVE PROJECT TO MONGODB
+      // =====================================================
+
+      const projectData = {
+        userId,
+        title:
+          selectedProject?.title ||
+          defaultTemplate?.name ||
+          "Turtle Art Project",
+        description:
+          "Turtle Art Studio project",
+        code,
+        penColor,
+        templateName:
+          defaultTemplate?.name || "",
+        language: "python",
+      };
+
+      let response;
+
+      if (selectedProject?._id) {
+        response =
+          await updateTurtleProject(
+            selectedProject._id,
+            projectData
+          );
+      } else {
+        response =
+          await saveTurtleProject(
+            projectData
+          );
+      }
+
+      if (response?.project) {
+        setSelectedProject(
+          response.project
+        );
+      }
+
       setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1800);
-    } catch {
-      // ignore storage failures (e.g. private browsing)
+
+      setTimeout(() => {
+        setSavedFlash(false);
+      }, 1800);
+    } catch (error) {
+      // User cancelled the Save As dialog
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        return;
+      }
+
+      console.error(
+        "Failed to save Turtle project:",
+        error
+      );
+
+      setError(
+        "Failed to save your Turtle project."
+      );
     }
   }
 
   function applyTemplate(tpl) {
-    setCode(tpl.code);
+    setCode(tpl?.code || "");
+    setDefaultTemplate(tpl || null);
+    setSelectedProject(null);
     setShowTemplates(false);
+    setShowColours(false);
+    setError("");
+    setHasRun(false);
+    clearCanvas();
   }
 
   return (
@@ -489,33 +720,70 @@ export default function TurtleArtStudio() {
       <div className="h-full flex flex-col bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 shrink-0">
           <div className="flex items-center gap-2">
-            <Palette size={16} style={{ color: "#8B5CF6" }} />
+            <Palette
+              size={16}
+              style={{
+                color: "#8B5CF6",
+              }}
+            />
+
             <div className="leading-tight">
-              <p className="text-[9px] font-bold tracking-wide" style={{ color: "#8B5CF6" }}>CREATOR TOOLS</p>
-              <p className="text-sm font-bold text-[#241B4E]">Turtle Art Studio</p>
+              <p
+                className="text-[9px] font-bold tracking-wide"
+                style={{
+                  color: "#8B5CF6",
+                }}
+              >
+                CREATOR TOOLS
+              </p>
+
+              <p className="text-sm font-bold text-[#241B4E]">
+                Turtle Art Studio
+              </p>
             </div>
           </div>
+
           <span className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">
             Up ↑, Space/Ctrl
           </span>
         </div>
 
-        <div className="px-4 py-2 shrink-0" style={{ backgroundColor: "#F5EEFF" }}>
-          <p className="text-xs font-bold text-[#241B4E]">Turtle Art Studio</p>
-          <p className="text-[10px] text-slate-400">Sketch, animate, and bring your ideas to life with code.</p>
+        <div
+          className="px-4 py-2 shrink-0"
+          style={{
+            backgroundColor: "#F5EEFF",
+          }}
+        >
+          <p className="text-xs font-bold text-[#241B4E]">
+            Turtle Art Studio
+          </p>
+
+          <p className="text-[10px] text-slate-400">
+            Sketch, animate, and bring your ideas to life with code.
+          </p>
         </div>
 
         <div className="flex-1 min-h-0 grid grid-cols-2 gap-px bg-slate-200">
           <textarea
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) =>
+              setCode(e.target.value)
+            }
             spellCheck={false}
             className="w-full h-full resize-none text-[#241B4E] font-mono text-xs p-4 outline-none leading-relaxed"
-            style={{ backgroundColor: "#F5EEFF" }}
+            style={{
+              backgroundColor: "#F5EEFF",
+            }}
           />
 
-          <div ref={containerRef} className="relative w-full h-full bg-white">
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          <div
+            ref={containerRef}
+            className="relative w-full h-full bg-white"
+          >
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full"
+            />
 
             {!hasRun && (
               <div className="absolute inset-0 flex items-center justify-center text-slate-300 text-xs pointer-events-none">
@@ -525,8 +793,17 @@ export default function TurtleArtStudio() {
 
             {(starting || running) && (
               <div className="absolute inset-0 flex items-center justify-center gap-2 bg-white/70 text-xs font-semibold text-slate-500">
-                <Loader2 size={14} className="animate-spin" style={{ color: "#8B5CF6" }} />
-                {starting ? "Loading Python runtime…" : "Running…"}
+                <Loader2
+                  size={14}
+                  className="animate-spin"
+                  style={{
+                    color: "#8B5CF6",
+                  }}
+                />
+
+                {starting
+                  ? "Loading Python runtime…"
+                  : "Running…"}
               </div>
             )}
 
@@ -545,54 +822,106 @@ export default function TurtleArtStudio() {
             disabled={running}
             className="flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {running ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-            {starting ? "Starting…" : running ? "Running…" : "Run"}
+            {running ? (
+              <Loader2
+                size={12}
+                className="animate-spin"
+              />
+            ) : (
+              <Play size={12} />
+            )}
+
+            {starting
+              ? "Starting…"
+              : running
+              ? "Running…"
+              : "Run"}
           </button>
 
           <button
             onClick={handleClear}
             className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100"
           >
-            <Trash2 size={12} /> Clear
+            <Trash2 size={12} />
+            Clear
           </button>
 
           <button
             onClick={handleReset}
             className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-3 py-1.5 text-xs font-semibold text-yellow-600 hover:bg-yellow-100"
           >
-            <RotateCcw size={12} /> Reset
+            <RotateCcw size={12} />
+            Reset
           </button>
 
           <button
             onClick={handleSave}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold hover:opacity-80"
-            style={{ backgroundColor: "#F5EEFF", color: "#8B5CF6" }}
+            style={{
+              backgroundColor: "#F5EEFF",
+              color: "#8B5CF6",
+            }}
           >
-            {savedFlash ? <Check size={12} /> : <Save size={12} />}
-            {savedFlash ? "Saved!" : "Save"}
+            {savedFlash ? (
+              <Check size={12} />
+            ) : (
+              <Save size={12} />
+            )}
+
+            {savedFlash
+              ? "Saved!"
+              : "Save"}
           </button>
 
           <div className="relative">
             <button
               onClick={() => {
-                setShowTemplates((v) => !v);
+                setShowTemplates(
+                  (v) => !v
+                );
                 setShowColours(false);
               }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
             >
-              <LayoutTemplate size={12} /> Templates
+              <LayoutTemplate
+                size={12}
+              />
+
+              Templates
             </button>
+
             {showTemplates && (
               <div className="absolute bottom-full mb-2 left-0 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-1 z-10">
-                {TEMPLATES.map((tpl) => (
-                  <button
-                    key={tpl.name}
-                    onClick={() => applyTemplate(tpl)}
-                    className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    {tpl.name}
-                  </button>
-                ))}
+                {loadingStudio ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    Loading templates…
+                  </div>
+                ) : templates.length ===
+                  0 ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    No templates available
+                  </div>
+                ) : (
+                  templates.map(
+                    (tpl) => (
+                      <button
+                        key={
+                          tpl._id ||
+                          tpl.templateId ||
+                          tpl.name
+                        }
+                        onClick={() =>
+                          applyTemplate(
+                            tpl
+                          )
+                        }
+                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        {tpl.name}
+                      </button>
+                    )
+                  )
+                )}
               </div>
             )}
           </div>
@@ -600,36 +929,68 @@ export default function TurtleArtStudio() {
           <div className="relative">
             <button
               onClick={() => {
-                setShowColours((v) => !v);
+                setShowColours(
+                  (v) => !v
+                );
                 setShowTemplates(false);
               }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
             >
-              <PaletteIcon size={12} /> Colours
+              <PaletteIcon
+                size={12}
+              />
+
+              Colours
             </button>
+
             {showColours && (
               <div className="absolute bottom-full mb-2 left-0 grid grid-cols-4 gap-1.5 rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-10">
-                {SWATCHES.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => {
-                      setPenColor(c);
-                      setShowColours(false);
-                    }}
-                    className="h-6 w-6 rounded-full border border-slate-200"
-                    style={{ backgroundColor: c }}
-                    aria-label={c}
-                  />
-                ))}
+                {loadingStudio ? (
+                  <div className="col-span-4 px-2 py-2 text-xs text-slate-400">
+                    Loading colours…
+                  </div>
+                ) : swatches.length ===
+                  0 ? (
+                  <div className="col-span-4 px-2 py-2 text-xs text-slate-400">
+                    No colours available
+                  </div>
+                ) : (
+                  swatches.map(
+                    (c) => (
+                      <button
+                        key={c}
+                        onClick={() => {
+                          setPenColor(c);
+                          setShowColours(
+                            false
+                          );
+                        }}
+                        className="h-6 w-6 rounded-full border border-slate-200"
+                        style={{
+                          backgroundColor:
+                            c,
+                        }}
+                        aria-label={c}
+                      />
+                    )
+                  )
+                )}
               </div>
             )}
           </div>
 
-          <span className="text-xs font-semibold text-slate-400">Pen</span>
+          <span className="text-xs font-semibold text-slate-400">
+            Pen
+          </span>
+
           <input
             type="color"
             value={penColor}
-            onChange={(e) => setPenColor(e.target.value)}
+            onChange={(e) =>
+              setPenColor(
+                e.target.value
+              )
+            }
             className="h-6 w-10 rounded border border-slate-200"
           />
         </div>

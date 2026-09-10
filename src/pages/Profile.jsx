@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AppLayout from "../components/AppLayout";
 import { useNavigate } from "react-router-dom";
 import {
@@ -19,6 +19,17 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { getCurrentUser, setCurrentUser, initialsFromName } from "../utils/auth";
+import {
+  getProfile,
+  updateProfile,
+  updateProfileNotifications,
+  createStripeCheckoutSession,
+  getPaymentStatus,
+} from "../services/api";
+import {
+  enableBrowserNotifications,
+  disableBrowserNotifications,
+} from "../utils/notifications";
 
 const PROFILE_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
@@ -33,30 +44,344 @@ const TABS = [
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(getCurrentUser() || { name: "Guest", email: "", provider: "email", accountType: "Free" });
+  const initialUser = getCurrentUser() || {
+    name: "Guest",
+    email: "",
+    provider: "email",
+    accountType: "Free",
+  };
+
+  const [user, setUser] = useState(initialUser);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("account");
-  const [fullName, setFullName] = useState(user.name);
-  const [mobile, setMobile] = useState(user.phone || "");
+  const [fullName, setFullName] = useState(initialUser.name || "");
+  const [mobile, setMobile] = useState(initialUser.phone || "");
+  const [selectedAccountType, setSelectedAccountType] = useState(
+    initialUser.accountType === "Premium" ? "Premium" : "Free"
+  );
   const [notifications, setNotifications] = useState({
     courseUpdates: true,
     achievements: true,
     weeklyReport: true,
   });
+  const [loading, setLoading] = useState(true);
+  const [savingName, setSavingName] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [savingNotification, setSavingNotification] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
 
-  function handleSaveName() {
-    const updated = { ...user, name: fullName };
-    setCurrentUser(updated);
-    setUser(updated);
+  const userId =
+    initialUser?.id ||
+    initialUser?._id ||
+    initialUser?.userId ||
+    initialUser?.email ||
+    initialUser?.phone ||
+    "guest";
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProfile() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await getProfile(userId);
+        const loadedProfile = response?.profile || response;
+
+        if (!mounted || !loadedProfile) return;
+
+        setProfile(loadedProfile);
+
+        const nextUser = {
+          ...initialUser,
+          name: loadedProfile.name || initialUser.name || "Guest",
+          email: loadedProfile.email || initialUser.email || "",
+          phone: loadedProfile.phone || "",
+          provider: loadedProfile.provider || initialUser.provider || "email",
+          accountType:
+            loadedProfile.accountType || initialUser.accountType || "Free",
+        };
+
+        setUser(nextUser);
+        setFullName(nextUser.name);
+        setMobile(nextUser.phone);
+        setSelectedAccountType(
+          nextUser.accountType === "Premium" ? "Premium" : "Free"
+        );
+
+        setNotifications({
+          courseUpdates:
+            loadedProfile.notifications?.courseUpdates ?? true,
+          achievements:
+            loadedProfile.notifications?.achievements ?? true,
+          weeklyReport:
+            loadedProfile.notifications?.weeklyReport ?? true,
+        });
+
+        setCurrentUser(nextUser);
+      } catch (err) {
+        if (mounted) {
+          setError(err.message || "Failed to load profile");
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  function showSuccessToast(title, message) {
+    setToast({
+      type: "success",
+      title,
+      message,
+    });
+
+    window.setTimeout(() => setToast(null), 4000);
   }
 
-  function toggleNotification(key) {
-    setNotifications((n) => ({ ...n, [key]: !n[key] }));
+  function showErrorToast(title, message) {
+    setToast({
+      type: "error",
+      title,
+      message,
+    });
+
+    window.setTimeout(() => {
+      setToast(null);
+    }, 4000);
+  }
+
+  async function handleSaveName() {
+    const trimmedName = fullName.trim();
+    if (!trimmedName || savingName) return;
+
+    try {
+      setSavingName(true);
+      setError("");
+
+      const response = await updateProfile(userId, {
+        name: trimmedName,
+      });
+
+      const updatedProfile = response?.profile || response;
+      setProfile(updatedProfile);
+
+      const updated = {
+        ...user,
+        name: updatedProfile.name || trimmedName,
+      };
+
+      setCurrentUser(updated);
+      setUser(updated);
+      setFullName(updated.name);
+
+      showSuccessToast(
+        "Profile updated",
+        "Your profile information has been updated successfully."
+      );
+    } catch (err) {
+      setError(err.message || "Failed to update name");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  async function handleSavePhone() {
+    const trimmedMobile = mobile.trim();
+
+    if (!trimmedMobile || savingPhone) return;
+
+    try {
+      setSavingPhone(true);
+      setError("");
+
+      const response = await updateProfile(userId, {
+        phone: trimmedMobile,
+      });
+
+      const updatedProfile = response?.profile || response;
+
+      setProfile(updatedProfile);
+
+      const updated = {
+        ...user,
+        phone: updatedProfile.phone || trimmedMobile,
+      };
+
+      setCurrentUser(updated);
+      setUser(updated);
+      setMobile(updated.phone);
+
+      showSuccessToast(
+        "Profile updated",
+        "Your profile information has been updated successfully."
+      );
+    } catch (err) {
+      if (err.code === "PHONE_ALREADY_REGISTERED") {
+        showErrorToast(
+          "Phone number already registered",
+          "An account is already registered using this number."
+        );
+      } else {
+        setError(err.message || "Failed to update phone");
+      }
+    } finally {
+      setSavingPhone(false);
+    }
+  }
+async function handleUpgradeToPremium() {
+  if (paymentLoading || accountType === "Premium") {
+    return;
+  }
+
+  try {
+    setPaymentLoading(true);
+    setError("");
+
+    const response =
+      await createStripeCheckoutSession(userId);
+
+    if (!response?.url) {
+      throw new Error(
+        "Stripe checkout could not be created."
+      );
+    }
+
+    window.location.href = response.url;
+  } catch (err) {
+    console.error(
+      "Stripe payment error:",
+      err
+    );
+
+    setPaymentLoading(false);
+
+    if (err.code === "ALREADY_PREMIUM") {
+      showSuccessToast(
+        "Premium account",
+        "This account already has Premium access."
+      );
+    } else {
+      setError(
+        err.message ||
+          "Unable to start payment."
+      );
+    }
+  }
+}
+  async function toggleNotification(key) {
+    if (savingNotification) return;
+
+    const nextValue = !notifications[key];
+    const nextNotifications = {
+      ...notifications,
+      [key]: nextValue,
+    };
+
+    try {
+      setSavingNotification(true);
+      setError("");
+
+      const response = await updateProfileNotifications(
+        userId,
+        nextNotifications
+      );
+
+      const updatedProfile = response?.profile || response;
+      if (updatedProfile) setProfile(updatedProfile);
+
+      // The browser has one push subscription for the user.
+      // The three switches only control which notification types are allowed.
+      if (nextValue) {
+        await enableBrowserNotifications(userId);
+      } else {
+        const anyNotificationEnabled = Object.values(nextNotifications).some(Boolean);
+        if (!anyNotificationEnabled) {
+          await disableBrowserNotifications(userId);
+        }
+      }
+
+      setNotifications(nextNotifications);
+    } catch (err) {
+      console.error("Notification update failed:", err);
+      setError(
+        err.message ||
+          "Failed to update notification settings. Please allow browser notifications and try again."
+      );
+    } finally {
+      setSavingNotification(false);
+    }
   }
 
   const isGoogle = user.provider === "google";
 
+  const overallProgress = profile?.overallProgress ?? 0;
+  const achievementsCount = profile?.achievementsCount ?? 0;
+  const streak = profile?.streak ?? 0;
+  const accountType =
+    profile?.accountType ||
+    user.accountType ||
+    selectedAccountType ||
+    "Free";
+
+  const subscription = profile?.subscription || {
+    plan: accountType,
+    description: "",
+    benefits: [],
+    price: 0,
+    period: "per annum",
+    status: "active",
+  };
+
+  const notificationItems = [
+    {
+      key: "courseUpdates",
+      label: "Course updates",
+      desc: "Receive notifications about course updates and new content",
+    },
+    {
+      key: "achievements",
+      label: "Achievement notifications",
+      desc: "Receive notifications when you earn new achievements",
+    },
+    {
+      key: "weeklyReport",
+      label: "Weekly progress report",
+      desc: "Receive a weekly email with your learning progress",
+    },
+  ];
+
   return (
     <AppLayout active="profile">
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[100] w-[435px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-xl">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-bold text-[#241B4E]">{toast.title}</p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">{toast.message}</p>
+            </div>
+            <button type="button" onClick={() => setToast(null)} className="shrink-0 text-slate-400 hover:text-slate-600" aria-label="Close notification">×</button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mx-auto mt-3 max-w-5xl px-6">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            {error}
+          </div>
+        </div>
+      )}
+
       {/* Page-specific header with back + user summary */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shrink-0">
         <button
@@ -67,7 +392,7 @@ export default function Profile() {
           <div className="text-left">
             <p className="text-[10px] font-bold tracking-wide text-slate-400">MY PROFILE</p>
             <p className="text-sm font-bold text-[#241B4E]">{user.name}</p>
-            <p className="text-[10px] text-slate-400">Free Account</p>
+            <p className="text-[10px] text-slate-400">{accountType} Account</p>
           </div>
         </button>
 
@@ -81,26 +406,41 @@ export default function Profile() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-6 py-8">
+          {loading && (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 mb-6 text-xs text-slate-400">
+              Loading profile...
+            </div>
+          )}
+
           {/* Overall progress */}
           <div className="rounded-xl border border-slate-200 p-4 mb-6" style={{ backgroundColor: "#F5EEFF" }}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold text-[#241B4E]">Overall Progress</p>
-              <span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>0%</span>
+              <span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{overallProgress}%</span>
             </div>
             <div className="flex gap-2 mb-3">
               <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2 py-0.5 text-[10px] text-slate-500">
-                <Trophy size={11} /> 0 Achievements
+                <Trophy size={11} /> {achievementsCount} Achievement{achievementsCount === 1 ? "" : "s"}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2 py-0.5 text-[10px] text-slate-500">
-                <Flame size={11} /> 1 day streak
+                <Flame size={11} /> {streak} day{streak === 1 ? "" : "s"} streak
               </span>
             </div>
             <button
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 flex items-center justify-center gap-2"
-              style={{ background: PROFILE_GRADIENT }}
-            >
-              <Lock size={13} /> Upgrade to Premium
-            </button>
+  type="button"
+  onClick={handleUpgradeToPremium}
+  disabled={paymentLoading || accountType === "Premium"}
+  className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-60"
+  style={{ background: PROFILE_GRADIENT }}
+>
+  <Lock size={13} />
+
+  {paymentLoading
+    ? "Opening Payment..."
+    : accountType === "Premium"
+      ? "Premium Active"
+      : "Upgrade to Premium"}
+</button>
           </div>
 
           {/* Tabs */}
@@ -125,6 +465,7 @@ export default function Profile() {
           {activeTab === "account" && (
             <>
               {/* Complete profile banner */}
+              {!mobile && (
               <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 mb-6">
                 <AlertTriangle size={16} className="text-yellow-500 shrink-0 mt-0.5" />
                 <div>
@@ -134,12 +475,13 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* How you're registered */}
               <p className="text-xs font-bold text-[#241B4E] mb-2">How you're registered</p>
               <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 mb-6">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-50 text-red-500 text-xs font-bold">
-                  G
+                  {isGoogle ? "G" : (user.provider || "E").slice(0, 1).toUpperCase()}
                 </span>
                 <div>
                   <p className="text-xs font-semibold text-[#241B4E]">
@@ -172,19 +514,22 @@ export default function Profile() {
                     />
 
                     <label className="text-xs font-semibold text-slate-500">Account Type</label>
-                    <input
-                      type="text"
-                      value={user.accountType || "Free"}
-                      disabled
-                      className="mt-1 mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400"
-                    />
+                    <select
+                      value={selectedAccountType}
+                      onChange={(e) => setSelectedAccountType(e.target.value)}
+                      className="mt-1 mb-4 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-[#241B4E] outline-none focus:ring-2"
+                      style={{ "--tw-ring-color": "rgba(139,92,246,0.3)" }}
+                    >
+                      <option value="Free">Free Account</option>
+                      <option value="Premium">Premium Account</option>
+                    </select>
 
                     <button
                       onClick={handleSaveName}
                       className="rounded-lg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
                       style={{ background: PROFILE_GRADIENT }}
                     >
-                      Save Name
+                      {savingName ? "Saving..." : "Save Name"}
                     </button>
                   </div>
 
@@ -234,10 +579,11 @@ export default function Profile() {
                       />
                     </div>
                     <button
-                      disabled={!mobile}
+                      onClick={handleSavePhone}
+                      disabled={!mobile || savingPhone}
                       className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-400 disabled:opacity-60"
                     >
-                      Update Phone
+                      {savingPhone ? "Saving..." : "Update Phone"}
                     </button>
                   </div>
 
@@ -245,12 +591,11 @@ export default function Profile() {
                   <div className="rounded-xl border border-slate-200 bg-white p-5">
                     <p className="font-bold text-[#241B4E]">Notification Settings</p>
                     <p className="text-xs text-slate-400 mb-4">Control what notifications you receive.</p>
+                   {savingNotification && (
+                     <p className="mb-3 text-xs text-[#8B5CF6]">Updating notification settings...</p>
+                   )}
 
-                    {[
-                      { key: "courseUpdates", label: "Course updates", desc: "Receive notifications about course updates and new content" },
-                      { key: "achievements", label: "Achievement notifications", desc: "Receive notifications when you earn new achievements" },
-                      { key: "weeklyReport", label: "Weekly progress report", desc: "Receive a weekly email with your learning progress" },
-                    ].map(({ key, label, desc }, i, arr) => (
+                    {notificationItems.map(({ key, label, desc }, i, arr) => (
                       <div
                         key={key}
                         className={`flex items-center justify-between py-3 ${
@@ -263,7 +608,9 @@ export default function Profile() {
                         </div>
                         <button
                           onClick={() => toggleNotification(key)}
-                          className="relative h-6 w-11 shrink-0 rounded-full overflow-hidden transition-colors duration-200"
+                          disabled={savingNotification}
+                          aria-label={`Turn ${label} ${notifications[key] ? "off" : "on"}`}
+                          className="relative h-6 w-11 shrink-0 rounded-full overflow-hidden transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                           style={{ background: notifications[key] ? PROFILE_GRADIENT : "#E2E8F0" }}
                         >
                           <span
@@ -283,7 +630,7 @@ export default function Profile() {
                   <p className="text-xs text-slate-400 mb-4">Manage your CodeVista subscription</p>
 
                   <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 mb-4">
-                    <p className="text-xs font-bold text-yellow-700">Free Account</p>
+                    <p className="text-xs font-bold text-yellow-700">{subscription.plan || accountType} Account</p>
                     <p className="text-xs text-yellow-600 mt-1">
                       Upgrade to Premium for full access to all courses and features
                     </p>
@@ -313,11 +660,18 @@ export default function Profile() {
                   <p className="text-center text-xs text-slate-400 mb-4">per annum</p>
 
                   <button
-                    className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
-                    style={{ background: PROFILE_GRADIENT }}
-                  >
-                    Upgrade to Premium
-                  </button>
+  type="button"
+  onClick={handleUpgradeToPremium}
+  disabled={paymentLoading || accountType === "Premium"}
+  className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+  style={{ background: PROFILE_GRADIENT }}
+>
+  {paymentLoading
+    ? "Opening Payment..."
+    : accountType === "Premium"
+      ? "Premium Active"
+      : "Upgrade to Premium"}
+</button>
                 </div>
               </div>
             </>

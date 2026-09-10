@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   HelpCircle,
   BookOpen,
@@ -10,86 +10,58 @@ import {
 } from "lucide-react";
 import AppLayout from "../components/AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
+import { getHelpContent } from "../services/api";
 
 const HELP_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
-const FAQS = [
-  {
-    q: "Where do I even start with Python?",
-    a: "Start with 'Python Starters' — it's built for total beginners and walks through basic commands, data types, and core concepts in a kid-friendly way.",
-  },
-  {
-    q: "What ages is CodeVista built for?",
-    a: "CodeVista is designed for kids aged 8–14, with courses tailored to different stages: Python Starters (8–10), Python Explorer (11+), and Python Creator (12–14+).",
-  },
-  {
-    q: "How can I see how far I've come?",
-    a: "Your progress saves automatically as you go. Head to your Dashboard to see completed courses, earned achievements, and your current streak.",
-  },
-  {
-    q: "What exactly are achievements?",
-    a: "Achievements are rewards for completing lessons, courses, and coding challenges. Visit the Achievements page to see every badge and how close you are to unlocking it.",
-  },
-  {
-    q: "Can I actually write code right in the browser?",
-    a: "Yes! Every lesson comes with a built-in code editor so you can write and run real Python without installing anything.",
-  },
-  {
-    q: "Stuck on something — where do I get help?",
-    a: "Use this Help page, post a question in the Community section, or reach out to the support team using the contact details below.",
-  },
-];
-
-const FEATURES = [
-  {
-    icon: BookOpen,
-    title: "Bite-Sized Lessons",
-    desc: "Step-by-step lessons with a live code editor, so you learn by actually running Python, not just reading about it.",
-    colorIndex: 4,
-  },
-  {
-    icon: Award,
-    title: "Achievements & Badges",
-    desc: "Unlock badges and milestones as you work through courses and finish coding challenges.",
-    colorIndex: 2,
-  },
-  {
-    icon: Gauge,
-    title: "Progress Tracking",
-    desc: "See exactly where you stand with detailed stats and progress reports.",
-    colorIndex: 5,
-  },
-  {
-    icon: Users,
-    title: "A Real Community",
-    desc: "Share what you've built, ask questions, and connect with other young coders.",
-    colorIndex: 3,
-  },
-];
-
-const GUIDE_STEPS = [
-  {
-    title: "Pick a Course",
-    desc: "New to programming? Start with Python Starters. Already know some basics? Jump straight into Python Explorer.",
-  },
-  {
-    title: "Work Through the Lessons",
-    desc: "Go at your own pace — each lesson has explanations, examples, and hands-on coding exercises to try.",
-  },
-  {
-    title: "Unlock Achievements",
-    desc: "Finish lessons and challenges to earn badges. Track everything on the Achievements page.",
-  },
-  {
-    title: "Say Hi in the Community",
-    desc: "Share your projects, ask questions, and see what other young coders are building.",
-  },
-];
-
 const TABS = ["FAQs", "Features", "Contact"];
+
+const ICONS = {
+  BookOpen,
+  Award,
+  Gauge,
+  Users,
+};
 
 export default function Help() {
   const [activeTab, setActiveTab] = useState("FAQs");
+
+  const [faqs, setFaqs] = useState([]);
+  const [features, setFeatures] = useState([]);
+  const [guideSteps, setGuideSteps] = useState([]);
+  const [contact, setContact] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadHelpContent() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await getHelpContent();
+      const content = response?.help || response?.data || response || {};
+
+      setFaqs(Array.isArray(content.faqs) ? content.faqs : []);
+      setFeatures(Array.isArray(content.features) ? content.features : []);
+      setGuideSteps(
+        Array.isArray(content.guideSteps) ? content.guideSteps : []
+      );
+      setContact(content.contact || null);
+    } catch (err) {
+      console.error("Help content error:", err);
+      setFaqs([]);
+      setFeatures([]);
+      setGuideSteps([]);
+      setContact(null);
+      setError("Could not load help content. Please check your backend connection.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadHelpContent();
+  }, []);
 
   return (
     <AppLayout>
@@ -138,192 +110,226 @@ export default function Help() {
               ))}
             </div>
 
-            {activeTab === "FAQs" && (
+            {loading ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500">
+                Loading help content...
+              </div>
+            ) : error ? (
+              <div className="rounded-xl border border-red-200 bg-white p-6 text-center text-xs text-red-500">
+                {error}
+              </div>
+            ) : (
               <>
-                <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
-                  Common Questions
-                </h2>
+                {activeTab === "FAQs" && (
+                  <>
+                    <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
+                      Common Questions
+                    </h2>
 
-                <div className="space-y-3">
-                  {FAQS.map((f, i) => {
-                    const clr = PALETTE[i % PALETTE.length];
-
-                    return (
-                      <div
-                        key={f.q}
-                        className="rounded-xl border-2 bg-white p-4"
-                        style={{ borderColor: clr.border }}
-                      >
-                        <p
-                          className="flex items-center gap-2 text-sm font-bold"
-                          style={{ color: clr.text }}
-                        >
-                          <HelpCircle size={13} />
-                          {f.q}
-                        </p>
-
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                          {f.a}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            {activeTab === "Features" && (
-              <>
-                <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
-                  What's Included
-                </h2>
-
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  {FEATURES.map(
-                    ({ icon: Icon, title, desc, colorIndex }) => {
-                      const clr = PALETTE[colorIndex];
-
-                      return (
-                        <div
-                          key={title}
-                          className="rounded-xl border-2 bg-white p-4"
-                          style={{ borderColor: clr.border }}
-                        >
-                          <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
-                            <Icon
-                              size={14}
-                              style={{ color: clr.text }}
-                            />
-                            {title}
-                          </p>
-
-                          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                            {desc}
-                          </p>
+                    <div className="space-y-3">
+                      {faqs.length === 0 ? (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
+                          No FAQs are available yet.
                         </div>
-                      );
-                    }
-                  )}
-                </div>
+                      ) : (
+                        faqs.map((f, i) => {
+                          const clr = PALETTE[i % PALETTE.length];
 
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="mb-3 text-sm font-bold text-[#241B4E]">
-                    How to Get Started
-                  </p>
+                          return (
+                            <div
+                              key={f._id || f.q || i}
+                              className="rounded-xl border-2 bg-white p-4"
+                              style={{ borderColor: clr.border }}
+                            >
+                              <p
+                                className="flex items-center gap-2 text-sm font-bold"
+                                style={{ color: clr.text }}
+                              >
+                                <HelpCircle size={13} />
+                                {f.q}
+                              </p>
 
-                  <ol className="space-y-3">
-                    {GUIDE_STEPS.map((s, i) => (
-                      <li
-                        key={s.title}
-                        className="flex items-start gap-3"
-                      >
-                        <span
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                          style={{
-                            backgroundColor: "#F5EEFF",
-                            color: "#8B5CF6",
-                          }}
-                        >
-                          {i + 1}
-                        </span>
+                              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                                {f.a}
+                              </p>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
 
-                        <span>
-                          <p
-                            className="text-xs font-bold"
+                {activeTab === "Features" && (
+                  <>
+                    <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
+                      What's Included
+                    </h2>
+
+                    <div className="mb-4 grid grid-cols-2 gap-4">
+                      {features.length === 0 ? (
+                        <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
+                          No feature information is available yet.
+                        </div>
+                      ) : (
+                        features.map((feature, index) => {
+                          const Icon =
+                            ICONS[feature.icon] || ICONS[feature.iconName] || BookOpen;
+                          const colorIndex =
+                            Number.isInteger(feature.colorIndex)
+                              ? feature.colorIndex
+                              : index % PALETTE.length;
+                          const clr = PALETTE[colorIndex % PALETTE.length];
+
+                          return (
+                            <div
+                              key={feature._id || feature.title || index}
+                              className="rounded-xl border-2 bg-white p-4"
+                              style={{ borderColor: clr.border }}
+                            >
+                              <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
+                                <Icon size={14} style={{ color: clr.text }} />
+                                {feature.title}
+                              </p>
+
+                              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                                {feature.desc}
+                              </p>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="mb-3 text-sm font-bold text-[#241B4E]">
+                        How to Get Started
+                      </p>
+
+                      <ol className="space-y-3">
+                        {guideSteps.length === 0 ? (
+                          <li className="text-xs text-slate-500">
+                            No getting-started guide is available yet.
+                          </li>
+                        ) : (
+                          guideSteps.map((s, i) => (
+                            <li
+                              key={s._id || s.title || i}
+                              className="flex items-start gap-3"
+                            >
+                              <span
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                                style={{
+                                  backgroundColor: "#F5EEFF",
+                                  color: "#8B5CF6",
+                                }}
+                              >
+                                {i + 1}
+                              </span>
+
+                              <span>
+                                <p
+                                  className="text-xs font-bold"
+                                  style={{ color: "#8B5CF6" }}
+                                >
+                                  {s.title}
+                                </p>
+
+                                <p className="text-xs leading-relaxed text-slate-500">
+                                  {s.desc}
+                                </p>
+                              </span>
+                            </li>
+                          ))
+                        )}
+                      </ol>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === "Contact" && (
+                  <>
+                    <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
+                      Reach Out
+                    </h2>
+
+                    <div className="mb-4 grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
+                          <Mail
+                            size={14}
+                            style={{ color: "#8B5CF6" }}
+                          />
+                          {contact?.emailTitle || "Email Us"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {contact?.emailDescription || ""}
+                        </p>
+
+                        {contact?.email ? (
+                          <a
+                            href={`mailto:${contact.email}`}
+                            className="mt-1 block text-xs font-semibold"
                             style={{ color: "#8B5CF6" }}
                           >
-                            {s.title}
-                          </p>
+                            {contact.email}
+                          </a>
+                        ) : null}
+                      </div>
 
-                          <p className="text-xs leading-relaxed text-slate-500">
-                            {s.desc}
-                          </p>
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </>
-            )}
+                      <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
+                          <MessageCircle
+                            size={14}
+                            style={{ color: "#1AACDB" }}
+                          />
+                          {contact?.communityTitle || "Ask the Community"}
+                        </p>
 
-            {activeTab === "Contact" && (
-              <>
-                <h2 className="mb-4 text-lg font-extrabold text-[#241B4E]">
-                  Reach Out
-                </h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {contact?.communityDescription || ""}
+                        </p>
 
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
-                      <Mail
-                        size={14}
-                        style={{ color: "#8B5CF6" }}
-                      />
-                      Email Us
-                    </p>
+                        {contact?.communityPath ? (
+                          <a
+                            href={contact.communityPath}
+                            className="mt-1 block text-xs font-semibold"
+                            style={{ color: "#1AACDB" }}
+                          >
+                            {contact?.communityLinkText || "Visit Community ↗"}
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      Question or stuck on something? Send an email and
-                      we'll reply within 24 hours.
-                    </p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="mb-2 text-sm font-bold text-[#241B4E]">
+                        {contact?.furtherTitle || "Want to Go Further?"}
+                      </p>
 
-                    <a
-                      href="mailto:team@gokulamtech.com"
-                      className="mt-1 block text-xs font-semibold"
-                      style={{ color: "#8B5CF6" }}
-                    >
-                      team@gokulamtech.com
-                    </a>
-                  </div>
+                      <p className="text-xs font-semibold text-[#241B4E]">
+                        {contact?.externalTitle || ""}
+                      </p>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <p className="flex items-center gap-2 text-sm font-bold text-[#241B4E]">
-                      <MessageCircle
-                        size={14}
-                        style={{ color: "#1AACDB" }}
-                      />
-                      Ask the Community
-                    </p>
+                      <p className="text-xs text-slate-500">
+                        {contact?.externalDescription || ""}
+                      </p>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      Get help from other students and show off what
-                      you've built.
-                    </p>
-
-                    <a
-                      href="/community"
-                      className="mt-1 block text-xs font-semibold"
-                      style={{ color: "#1AACDB" }}
-                    >
-                      Visit Community ↗
-                    </a>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="mb-2 text-sm font-bold text-[#241B4E]">
-                    Want to Go Further?
-                  </p>
-
-                  <p className="text-xs font-semibold text-[#241B4E]">
-                    Python.org
-                  </p>
-
-                  <p className="text-xs text-slate-500">
-                    The official Python docs and tutorials, for when
-                    you're ready to go beyond the basics.
-                  </p>
-
-                  <a
-                    href="https://python.org"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 block text-xs font-semibold"
-                    style={{ color: "#8B5CF6" }}
-                  >
-                    Visit Python.org ↗
-                  </a>
-                </div>
+                      {contact?.externalUrl ? (
+                        <a
+                          href={contact.externalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 block text-xs font-semibold"
+                          style={{ color: "#8B5CF6" }}
+                        >
+                          {contact?.externalLinkText || "Visit ↗"}
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
