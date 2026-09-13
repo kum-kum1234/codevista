@@ -187,12 +187,12 @@ export default function WhyUs() {
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={() => navigate("/courses")}
-            className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
-            style={{ background: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
-          >
-            Explore Courses <ArrowRight size={14} />
-          </button>
+  onClick={() => navigate("/login")}
+  className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105"
+  style={{ background: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
+>
+  Explore Courses <ArrowRight size={14} />
+</button>
           <button
             onClick={() => navigate("/faq")}
             className="rounded-full border-2 border-white/30 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10"

@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FontLoader, PALETTE, BRAND } from "../theme/playfulPalette";
+import { getCurrentUser } from "../utils/auth";
 
 const NAV = [
   { key: "home", label: "Home", path: "/" },
@@ -17,6 +18,20 @@ const NAV = [
 export default function PublicHeader({ active }) {
   const navigate = useNavigate();
 
+  const handleNavigation = (key, path) => {
+    // Courses requires login
+    if (key === "courses") {
+      const user = getCurrentUser();
+
+      if (!user) {
+        navigate("/login");
+        return;
+      }
+    }
+
+    navigate(path);
+  };
+
   return (
     <header className="font-body sticky top-0 z-20 flex items-center justify-between border-b-2 border-[#FFE4D6] bg-white/90 px-8 py-3 backdrop-blur">
       <FontLoader />
@@ -28,10 +43,13 @@ export default function PublicHeader({ active }) {
         >
           <span
             className="flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm"
-            style={{ background: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
+            style={{
+              background: "linear-gradient(135deg, #FF5A36, #EC4899)",
+            }}
           >
             {"</>"}
           </span>
+
           <span className="font-display text-lg font-extrabold text-[#241B4E]">
             CodeVista
           </span>
@@ -45,11 +63,12 @@ export default function PublicHeader({ active }) {
             return (
               <button
                 key={key}
-                onClick={() => navigate(path)}
+                onClick={() => handleNavigation(key, path)}
                 className="relative pb-1 transition-colors"
                 style={isActive ? { color: color.text } : undefined}
               >
                 {label}
+
                 {isActive && (
                   <span
                     className="absolute -bottom-[2px] left-0 h-[3px] w-full rounded-full"
@@ -73,7 +92,9 @@ export default function PublicHeader({ active }) {
         <button
           onClick={() => navigate("/signup")}
           className="rounded-full px-4 py-2 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105"
-          style={{ background: "linear-gradient(135deg, #FF5A36, #EC4899)" }}
+          style={{
+            background: "linear-gradient(135deg, #FF5A36, #EC4899)",
+          }}
         >
           Get Started
         </button>

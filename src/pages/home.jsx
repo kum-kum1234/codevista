@@ -475,7 +475,7 @@ export default function Home() {
                 </ul>
 
                 <button
-                  onClick={() => navigate("/courses")}
+                  onClick={() => navigate("/login")}
                   className="mt-5 rounded-full py-2.5 text-sm font-extrabold text-white transition-transform hover:scale-105"
                   style={{ backgroundColor: color.solid }}
                 >
@@ -486,7 +486,7 @@ export default function Home() {
           </div>
 
           <button
-            onClick={() => navigate("/courses")}
+            onClick={() => navigate("/login")}
             className="mt-8 inline-flex items-center gap-1.5 text-sm font-extrabold text-[#8B5CF6] hover:underline"
           >
             View All Courses <ArrowRight size={15} />
