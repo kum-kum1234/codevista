@@ -3,12 +3,27 @@ const CoursePurchase = require("../models/CoursePurchase");
 const Course = require("../models/Course");
 const Profile = require("../models/Profile");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// =====================================================
+// STRIPE CONFIGURATION
+// =====================================================
+
+let stripe = null;
+
+const getStripe = () => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+
+  if (!stripe) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+
+  return stripe;
+};
 
 const COURSE_PRICE = 1499;
 const COURSE_AMOUNT = 149900;
 const CURRENCY = "inr";
-
 
 // =====================================================
 // CREATE COURSE CHECKOUT SESSION
@@ -98,7 +113,7 @@ const createCourseCheckoutSession = async (req, res) => {
     // Create Stripe Checkout Session
     // -----------------------------------------------
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "payment",
 
       payment_method_types: ["card"],
@@ -188,7 +203,6 @@ const createCourseCheckoutSession = async (req, res) => {
   }
 };
 
-
 // =====================================================
 // GET COURSE PURCHASE STATUS
 // =====================================================
@@ -204,7 +218,10 @@ const getCoursePurchaseStatus = async (req, res) => {
       });
     }
 
+    // -----------------------------------------------
     // Premium users automatically have access
+    // -----------------------------------------------
+
     const profile = await Profile.findOne({
       userId,
       active: true,
@@ -257,11 +274,6 @@ const getCoursePurchaseStatus = async (req, res) => {
     });
   }
 };
-
-
-// =====================================================
-// ACTIVATE COURSE FROM STRIPE SESSION
-// =====================================================
 
 // =====================================================
 // ACTIVATE COURSE FROM STRIPE SESSION
@@ -416,6 +428,7 @@ const activateCourseFromSession = async (
     profile,
   };
 };
+
 // =====================================================
 // MARK SESSION AS EXPIRED
 // =====================================================
@@ -433,6 +446,7 @@ const expireCoursePurchaseFromSession = async (
   }
 
   purchase.status = "expired";
+
   purchase.stripeEventId =
     eventId || purchase.stripeEventId;
 
@@ -442,7 +456,6 @@ const expireCoursePurchaseFromSession = async (
     `Course checkout expired: ${purchase.courseId} / ${purchase.userId}`
   );
 };
-
 
 // =====================================================
 // EXPORTS
