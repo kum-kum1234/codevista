@@ -26,7 +26,7 @@ const weeklyReportRoutes = require("./routes/weeklyReportRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const paymentController = require("./controllers/paymentController");
 const coursePurchaseRoutes = require("./routes/coursePurchaseRoutes");
-const aiMentorRoutes = require("./routes/aiMentor");
+//const aiMentorRoutes = require("./routes/aiMentor");
 const app = express();
 
 
@@ -91,7 +91,7 @@ app.use("/api/payments", paymentRoutes);
 // Lesson APIs
 app.use("/api/lessons", lessonRoutes);
 // AI Mentor APIs
-app.use("/api/ai", aiMentorRoutes);
+//app.use("/api/ai", aiMentorRoutes);
 // Code Together APIs
 app.use("/api/code-together", codeTogetherRoutes);
 
