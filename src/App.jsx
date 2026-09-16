@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import AIMentor from "./pages/AIMentor";
+//import AIMentor from "./pages/AIMentor";
 import Home from "./pages/home";
 import Login from "./pages/login";
 import Onboarding from "./pages/onboarding";
