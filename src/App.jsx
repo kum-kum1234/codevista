@@ -33,7 +33,7 @@ import PythonHelpGuide from "./pages/PythonHelpGuide";
 import Timetable from "./pages/Timetable";
 import Notes from "./pages/notes";
 
-import FloatingAIMentor from "./components/FloatingAIMentor";
+//import FloatingAIMentor from "./components/FloatingAIMentor";
 
 import { getCurrentUser } from "./utils/auth";
 
@@ -140,16 +140,17 @@ export default function App() {
         {/* ==================================================
             AI MENTOR
         ================================================== */}
-
-        <Route
-          path="/ai-mentor"
-          element={
-            <ProtectedRoute>
-              <AIMentor />
-            </ProtectedRoute>
-          }
-        />
-
+       
+        {/* 
+<Route
+  path="/ai-mentor"
+  element={
+    <ProtectedRoute>
+      <AIMentor />
+    </ProtectedRoute>
+  }
+/>
+*/}
         {/* ==================================================
             LEARNING FEATURES
         ================================================== */}
@@ -251,7 +252,7 @@ export default function App() {
       </Routes>
 
       {/* Floating AI Mentor Widget */}
-      <FloatingAIMentor />
+      {/*<FloatingAIMentor />*/}
 
     </BrowserRouter>
   );
