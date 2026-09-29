@@ -1521,33 +1521,7 @@ exec(
 
             </div>
 
-            {/* ------------------------------------------------
-                Run button
-            ------------------------------------------------ */}
-
-            <div className="px-4 py-2 shrink-0">
-
-              <button
-                onClick={
-                  handleRun
-                }
-                disabled={
-                  running
-                }
-                className="flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
-              >
-
-                <Play size={12} />
-
-                {starting
-                  ? "Starting..."
-                  : running
-                  ? "Running..."
-                  : "Run"}
-
-              </button>
-
-            </div>
+            
 
             {/* ------------------------------------------------
                 Code + output

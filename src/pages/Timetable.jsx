@@ -28,15 +28,15 @@ const DAYS = [
   { key: "sat", label: "Sat" },
   { key: "sun", label: "Sun" },
 ];
-
-function to12h(t) {
+const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) =>
+  `${String(hour).padStart(2, "0")}:00`
+);
+function to24h(t) {
   if (!t) return "";
 
   const [h, m] = t.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
 
-  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 function createEntryMap(entries) {
@@ -492,8 +492,7 @@ export default function Timetable() {
                         size={12}
                         className="text-slate-300"
                       />
-
-                      {to12h(slot.start)} - {to12h(slot.end)}
+                     {to24h(slot.start)} - {to24h(slot.end)}
                     </span>
 
                     <button
@@ -583,14 +582,17 @@ export default function Timetable() {
                     Start
                   </label>
 
-                  <input
-                    type="time"
-                    value={newStart}
-                    onChange={(e) =>
-                      setNewStart(e.target.value)
-                    }
-                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                  />
+                  <select
+  value={newStart}
+  onChange={(e) => setNewStart(e.target.value)}
+  className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+>
+  {TIME_OPTIONS.map((time) => (
+    <option key={time} value={time}>
+      {time}
+    </option>
+  ))}
+</select>
                 </div>
 
                 <div>
@@ -598,14 +600,17 @@ export default function Timetable() {
                     End
                   </label>
 
-                  <input
-                    type="time"
-                    value={newEnd}
-                    onChange={(e) =>
-                      setNewEnd(e.target.value)
-                    }
-                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                  />
+                  <select
+  value={newEnd}
+  onChange={(e) => setNewEnd(e.target.value)}
+  className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+>
+  {TIME_OPTIONS.map((time) => (
+    <option key={time} value={time}>
+      {time}
+    </option>
+  ))}
+</select>
                 </div>
 
                 <button
