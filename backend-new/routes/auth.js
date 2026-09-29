@@ -1,7 +1,6 @@
 const express = require("express");
 const axios = require("axios");
 const crypto = require("crypto");
-
 const Profile = require("../models/Profile");
 
 const router = express.Router();
@@ -66,6 +65,7 @@ router.post("/login", async (req, res) => {
     if (!profile) {
       profile = await Profile.create({
         userId: generateUserId(),
+
         name: normalizedEmail
           .split("@")[0]
           .split(/[._-]+/)
@@ -75,9 +75,13 @@ router.post("/login", async (req, res) => {
               word.charAt(0).toUpperCase() + word.slice(1)
           )
           .join(" "),
+
         email: normalizedEmail,
+
         provider: "email",
+
         accountType: "Free",
+
         active: true,
       });
 
@@ -97,6 +101,7 @@ router.post("/login", async (req, res) => {
     return res.status(200).json({
       status: "success",
       message: "Login successful.",
+
       user: {
         userId: profile.userId,
         name: profile.name,
@@ -140,6 +145,7 @@ router.post("/otp/send", async (req, res) => {
   }
 
   const code = generateOtp();
+
   const expiresAt = Date.now() + 5 * 60 * 1000;
 
   otpStore.set(phone, {
@@ -152,8 +158,11 @@ router.post("/otp/send", async (req, res) => {
       "https://api.brevo.com/v3/transactionalSMS/send",
       {
         sender: process.env.BREVO_SENDER_NAME,
+
         recipient: `91${phone}`,
+
         content: `Your CodeVista OTP is ${code}. Valid for 5 minutes.`,
+
         type: "transactional",
       },
       {
@@ -220,6 +229,10 @@ router.post("/otp/verify", async (req, res) => {
       });
     }
 
+    // =================================================
+    // CHECK OTP EXPIRATION
+    // =================================================
+
     if (Date.now() > record.expiresAt) {
       otpStore.delete(phone);
 
@@ -227,6 +240,10 @@ router.post("/otp/verify", async (req, res) => {
         error: "Code expired. Please request a new one.",
       });
     }
+
+    // =================================================
+    // CHECK OTP
+    // =================================================
 
     if (record.code !== code) {
       return res.status(400).json({
@@ -252,25 +269,36 @@ router.post("/otp/verify", async (req, res) => {
     if (!profile) {
       profile = await Profile.create({
         userId: generateUserId(),
+
         name: name?.trim() || "Guest",
+
         email: email?.trim().toLowerCase() || "",
+
         phone,
+
         provider: "phone",
+
         accountType: "Free",
+
         active: true,
       });
 
       console.log(
         `✅ New phone user created: ${phone}`
       );
+
     } else {
+
       // =================================================
       // UPDATE OPTIONAL INFORMATION
       // =================================================
 
       let changed = false;
 
-      if (name?.trim() && profile.name === "Guest") {
+      if (
+        name?.trim() &&
+        profile.name === "Guest"
+      ) {
         profile.name = name.trim();
         changed = true;
       }
@@ -299,6 +327,7 @@ router.post("/otp/verify", async (req, res) => {
     return res.status(200).json({
       status: "approved",
       message: "OTP verified successfully.",
+
       user: {
         userId: profile.userId,
         name: profile.name,
@@ -317,6 +346,37 @@ router.post("/otp/verify", async (req, res) => {
 
     return res.status(500).json({
       error: "OTP verification failed. Please try again.",
+    });
+  }
+});
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+router.post("/logout", async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    console.log("=================================");
+    console.log("Logout request received");
+    console.log("User ID:", userId || "Not provided");
+    console.log("=================================");
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful.",
+    });
+
+  } catch (error) {
+    console.error("========== LOGOUT ERROR ==========");
+    console.error(error);
+    console.error("=================================");
+
+    return res.status(500).json({
+      success: false,
+      error: "Logout failed. Please try again.",
     });
   }
 });

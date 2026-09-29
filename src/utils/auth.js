@@ -1,14 +1,27 @@
-// Frontend authentication state
-// Stores the currently logged-in user in localStorage.
+// src/utils/auth.js
 
 const KEY = "pythonkid_user";
 
-// Save logged-in user
+// ======================================================
+// SAVE CURRENT USER
+// ======================================================
+
 export function setCurrentUser(user) {
+  if (!user) {
+    console.warn("Cannot save empty user");
+    return;
+  }
+
   localStorage.setItem(KEY, JSON.stringify(user));
+
+  // Notify other tabs/components
+  window.dispatchEvent(new Event("auth-change"));
 }
 
-// Get currently logged-in user
+// ======================================================
+// GET CURRENT USER
+// ======================================================
+
 export function getCurrentUser() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -27,17 +40,37 @@ export function getCurrentUser() {
     return user;
   } catch (error) {
     console.error("Invalid authentication data:", error);
+
     localStorage.removeItem(KEY);
+
     return null;
   }
 }
 
-// Logout
-export function clearCurrentUser() {
-  localStorage.removeItem(KEY);
+// ======================================================
+// CHECK LOGIN STATUS
+// ======================================================
+
+export function isLoggedIn() {
+  return getCurrentUser() !== null;
 }
 
-// Turns "kumkum.goyal@gmail.com" into "Kumkum Goyal"
+// ======================================================
+// CLEAR CURRENT USER
+// ======================================================
+
+export function clearCurrentUser() {
+  // Remove frontend authentication
+  localStorage.removeItem(KEY);
+
+  // Notify application
+  window.dispatchEvent(new Event("auth-change"));
+}
+
+// ======================================================
+// EMAIL -> NAME
+// ======================================================
+
 export function nameFromEmail(email) {
   if (!email) return "";
 
@@ -46,11 +79,17 @@ export function nameFromEmail(email) {
   return local
     .split(/[._-]+/)
     .filter(Boolean)
-    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .map(
+      (word) =>
+        word[0].toUpperCase() + word.slice(1)
+    )
     .join(" ");
 }
 
-// "Kumkum Goyal" -> "KG"
+// ======================================================
+// NAME -> INITIALS
+// ======================================================
+
 export function initialsFromName(name) {
   if (!name) return "?";
 
@@ -58,6 +97,9 @@ export function initialsFromName(name) {
 
   return parts
     .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() || "")
+    .map(
+      (part) =>
+        part[0]?.toUpperCase() || ""
+    )
     .join("");
 }
