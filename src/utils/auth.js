@@ -7,16 +7,16 @@ const KEY = "pythonkid_user";
 // ======================================================
 
 export function setCurrentUser(user) {
-  if (!user) {
-    console.warn("Cannot save empty user");
+  if (!user || typeof user !== "object") {
+    console.warn("Cannot save invalid user");
     return;
   }
 
   localStorage.setItem(KEY, JSON.stringify(user));
 
-  // Notify other tabs/components
   window.dispatchEvent(new Event("auth-change"));
 }
+
 
 // ======================================================
 // GET CURRENT USER
@@ -37,7 +37,14 @@ export function getCurrentUser() {
       return null;
     }
 
+    // userId is required
+    if (!user.userId) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
+
     return user;
+
   } catch (error) {
     console.error("Invalid authentication data:", error);
 
@@ -47,6 +54,7 @@ export function getCurrentUser() {
   }
 }
 
+
 // ======================================================
 // CHECK LOGIN STATUS
 // ======================================================
@@ -55,24 +63,26 @@ export function isLoggedIn() {
   return getCurrentUser() !== null;
 }
 
+
 // ======================================================
-// CLEAR CURRENT USER
+// CLEAR CURRENT USER / LOGOUT
 // ======================================================
 
 export function clearCurrentUser() {
-  // Remove frontend authentication
   localStorage.removeItem(KEY);
 
-  // Notify application
   window.dispatchEvent(new Event("auth-change"));
 }
+
 
 // ======================================================
 // EMAIL -> NAME
 // ======================================================
 
 export function nameFromEmail(email) {
-  if (!email) return "";
+  if (!email) {
+    return "";
+  }
 
   const local = email.split("@")[0];
 
@@ -81,17 +91,21 @@ export function nameFromEmail(email) {
     .filter(Boolean)
     .map(
       (word) =>
-        word[0].toUpperCase() + word.slice(1)
+        word.charAt(0).toUpperCase() +
+        word.slice(1)
     )
     .join(" ");
 }
+
 
 // ======================================================
 // NAME -> INITIALS
 // ======================================================
 
 export function initialsFromName(name) {
-  if (!name) return "?";
+  if (!name) {
+    return "?";
+  }
 
   const parts = name.trim().split(/\s+/);
 
@@ -99,7 +113,7 @@ export function initialsFromName(name) {
     .slice(0, 2)
     .map(
       (part) =>
-        part[0]?.toUpperCase() || ""
+        part.charAt(0).toUpperCase()
     )
     .join("");
 }

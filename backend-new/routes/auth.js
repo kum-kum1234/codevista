@@ -1,12 +1,18 @@
 const express = require("express");
 const axios = require("axios");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+
 const Profile = require("../models/Profile");
 
 const router = express.Router();
 
-const otpStore = new Map(); // phone -> { code, expiresAt }
+// =====================================================
+// OTP STORAGE
+// =====================================================
 
+// phone -> { code, expiresAt }
+const otpStore = new Map();
 
 // =====================================================
 // HELPERS
@@ -24,83 +30,133 @@ function generateUserId() {
   return crypto.randomUUID();
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 // =====================================================
-// EMAIL LOGIN
+// REGISTER WITH EMAIL + PASSWORD
+// =====================================================
+// Creates a new email account.
+//
+// Password is NEVER stored directly.
+// Only bcrypt hash is stored.
 // =====================================================
 
-router.post("/login", async (req, res) => {
+router.post("/register", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password, name } = req.body;
 
-    if (!email) {
+    // -------------------------------------------------
+    // VALIDATE INPUT
+    // -------------------------------------------------
+
+    if (!email || !password) {
       return res.status(400).json({
-        error: "Email is required.",
+        error: "Email and password are required.",
       });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // -------------------------------------------------
+    // VALIDATE EMAIL
+    // -------------------------------------------------
 
-    if (!emailRegex.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({
         error: "Enter a valid email address.",
       });
     }
 
-    // =================================================
-    // CHECK WHETHER USER ALREADY EXISTS
-    // =================================================
+    // -------------------------------------------------
+    // VALIDATE PASSWORD
+    // -------------------------------------------------
 
-    let profile = await Profile.findOne({
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters.",
+      });
+    }
+
+    // -------------------------------------------------
+    // CHECK EXISTING USER
+    // -------------------------------------------------
+
+    const existingUser = await Profile.findOne({
       email: normalizedEmail,
     });
 
-    // =================================================
-    // CREATE NEW USER IF NOT FOUND
-    // =================================================
-
-    if (!profile) {
-      profile = await Profile.create({
-        userId: generateUserId(),
-
-        name: normalizedEmail
-          .split("@")[0]
-          .split(/[._-]+/)
-          .filter(Boolean)
-          .map(
-            (word) =>
-              word.charAt(0).toUpperCase() + word.slice(1)
-          )
-          .join(" "),
-
-        email: normalizedEmail,
-
-        provider: "email",
-
-        accountType: "Free",
-
-        active: true,
+    if (existingUser) {
+      return res.status(409).json({
+        error: "An account with this email already exists.",
       });
-
-      console.log(
-        `✅ New user created: ${normalizedEmail}`
-      );
-    } else {
-      console.log(
-        `✅ Existing user logged in: ${normalizedEmail}`
-      );
     }
 
-    // =================================================
-    // RETURN USER TO FRONTEND
-    // =================================================
+    // -------------------------------------------------
+    // GENERATE NAME
+    // -------------------------------------------------
 
-    return res.status(200).json({
+    const generatedName =
+      normalizedEmail
+        .split("@")[0]
+        .split(/[._-]+/)
+        .filter(Boolean)
+        .map(
+          (word) =>
+            word.charAt(0).toUpperCase() +
+            word.slice(1)
+        )
+        .join(" ") || "User";
+
+    const finalName =
+      name?.trim() || generatedName;
+
+    // -------------------------------------------------
+    // HASH PASSWORD
+    // -------------------------------------------------
+
+    const passwordHash = await bcrypt.hash(
+      password,
+      12
+    );
+
+    // -------------------------------------------------
+    // CREATE USER
+    // -------------------------------------------------
+
+    const profile = await Profile.create({
+      userId: generateUserId(),
+
+      name: finalName,
+
+      email: normalizedEmail,
+
+      phone: "",
+
+      provider: "email",
+
+      passwordHash,
+
+      accountType: "Free",
+
+      premiumCourses: [],
+
+      active: true,
+    });
+
+    console.log(
+      `✅ New account created: ${normalizedEmail}`
+    );
+
+    // -------------------------------------------------
+    // RETURN SAFE USER DATA
+    // -------------------------------------------------
+
+    return res.status(201).json({
       status: "success",
-      message: "Login successful.",
+
+      message: "Account created successfully.",
 
       user: {
         userId: profile.userId,
@@ -112,89 +168,328 @@ router.post("/login", async (req, res) => {
         premiumCourses: profile.premiumCourses,
       },
     });
-
   } catch (error) {
-    console.error("========== EMAIL LOGIN ERROR ==========");
+    console.error(
+      "========== REGISTER ERROR =========="
+    );
+
     console.error(error);
-    console.error("=======================================");
+
+    console.error(
+      "===================================="
+    );
 
     return res.status(500).json({
-      error: "Login failed. Please try again.",
+      error:
+        "Registration failed. Please try again.",
     });
   }
 });
 
+// =====================================================
+// EMAIL LOGIN
+// =====================================================
+// Login ONLY works for an existing account.
+//
+// Flow:
+// 1. Validate email/password
+// 2. Find existing user
+// 3. Check account status
+// 4. Check passwordHash
+// 5. Compare password using bcrypt
+// 6. Return safe user information
+// =====================================================
+
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // -------------------------------------------------
+    // VALIDATE INPUT
+    // -------------------------------------------------
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "Email and password are required.",
+      });
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    // -------------------------------------------------
+    // VALIDATE EMAIL
+    // -------------------------------------------------
+
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        error: "Enter a valid email address.",
+      });
+    }
+
+    // -------------------------------------------------
+    // FIND USER
+    // -------------------------------------------------
+
+     const profile = await Profile.findOne({
+  email: normalizedEmail,
+}).select("+passwordHash");
+
+    // -------------------------------------------------
+    // USER NOT FOUND
+    // -------------------------------------------------
+
+    if (!profile) {
+      console.log(
+        `❌ Login failed. User not found: ${normalizedEmail}`
+      );
+
+      return res.status(401).json({
+        error: "Invalid email or password.",
+      });
+    }
+
+    // -------------------------------------------------
+    // CHECK ACCOUNT STATUS
+    // -------------------------------------------------
+
+    if (profile.active === false) {
+      return res.status(403).json({
+        error: "This account has been disabled.",
+      });
+    }
+
+    // -------------------------------------------------
+    // CHECK PASSWORD HASH
+    // -------------------------------------------------
+
+    if (!profile.passwordHash) {
+      console.log(
+        `❌ No password hash found for: ${normalizedEmail}`
+      );
+
+      return res.status(401).json({
+        error:
+          "This account does not have a password. Please use phone login or register again.",
+      });
+    }
+
+    // -------------------------------------------------
+    // COMPARE PASSWORD
+    // -------------------------------------------------
+
+    const passwordMatch =
+      await bcrypt.compare(
+        password,
+        profile.passwordHash
+      );
+
+    // -------------------------------------------------
+    // WRONG PASSWORD
+    // -------------------------------------------------
+
+    if (!passwordMatch) {
+      console.log(
+        `❌ Incorrect password for: ${normalizedEmail}`
+      );
+
+      return res.status(401).json({
+        error: "Invalid email or password.",
+      });
+    }
+
+    // -------------------------------------------------
+    // LOGIN SUCCESSFUL
+    // -------------------------------------------------
+
+    console.log(
+      `✅ User logged in successfully: ${normalizedEmail}`
+    );
+
+    return res.status(200).json({
+      status: "success",
+
+      message: "Login successful.",
+
+      user: {
+        userId: profile.userId,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        provider: profile.provider,
+        accountType: profile.accountType,
+        premiumCourses:
+          profile.premiumCourses || [],
+      },
+    });
+  } catch (error) {
+    console.error(
+      "========== EMAIL LOGIN ERROR =========="
+    );
+
+    console.error(error);
+
+    console.error(
+      "======================================="
+    );
+
+    return res.status(500).json({
+      error:
+        "Login failed. Please try again.",
+    });
+  }
+});
 
 // =====================================================
 // SEND OTP
 // =====================================================
 
 router.post("/otp/send", async (req, res) => {
-  const { phone } = req.body;
-
-  if (!phone) {
-    return res.status(400).json({
-      error: "Phone number is required.",
-    });
-  }
-
-  if (!isValidIndianPhone(phone)) {
-    return res.status(400).json({
-      error: "Enter a valid 10-digit mobile number.",
-    });
-  }
-
-  const code = generateOtp();
-
-  const expiresAt = Date.now() + 5 * 60 * 1000;
-
-  otpStore.set(phone, {
-    code,
-    expiresAt,
-  });
-
   try {
+    const { phone } = req.body;
+
+    // -------------------------------------------------
+    // VALIDATE PHONE
+    // -------------------------------------------------
+
+    if (!phone) {
+      return res.status(400).json({
+        error: "Phone number is required.",
+      });
+    }
+
+    const normalizedPhone =
+      String(phone).trim();
+
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return res.status(400).json({
+        error:
+          "Enter a valid 10-digit mobile number.",
+      });
+    }
+
+    // -------------------------------------------------
+    // GENERATE OTP
+    // -------------------------------------------------
+
+    const code = generateOtp();
+
+    const expiresAt =
+      Date.now() + 5 * 60 * 1000;
+
+    // -------------------------------------------------
+    // STORE OTP
+    // -------------------------------------------------
+
+    otpStore.set(normalizedPhone, {
+      code,
+      expiresAt,
+    });
+
+    // -------------------------------------------------
+    // CHECK BREVO CONFIGURATION
+    // -------------------------------------------------
+
+    if (
+      !process.env.BREVO_API_KEY ||
+      !process.env.BREVO_SENDER_NAME
+    ) {
+      console.error(
+        "❌ Brevo environment variables are missing."
+      );
+
+      otpStore.delete(normalizedPhone);
+
+      return res.status(500).json({
+        error:
+          "OTP service is not configured.",
+      });
+    }
+
+    // -------------------------------------------------
+    // SEND OTP USING BREVO
+    // -------------------------------------------------
+
     const response = await axios.post(
       "https://api.brevo.com/v3/transactionalSMS/send",
       {
-        sender: process.env.BREVO_SENDER_NAME,
+        sender:
+          process.env.BREVO_SENDER_NAME,
 
-        recipient: `91${phone}`,
+        recipient:
+          `91${normalizedPhone}`,
 
-        content: `Your CodeVista OTP is ${code}. Valid for 5 minutes.`,
+        content:
+          `Your CodeVista OTP is ${code}. Valid for 5 minutes.`,
 
         type: "transactional",
       },
       {
         headers: {
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key":
+            process.env.BREVO_API_KEY,
+
           accept: "application/json",
-          "content-type": "application/json",
+
+          "content-type":
+            "application/json",
         },
       }
     );
 
-    console.log("Brevo response:", response.data);
+    console.log(
+      "Brevo response:",
+      response.data
+    );
+
+    // -------------------------------------------------
+    // SUCCESS
+    // -------------------------------------------------
 
     return res.status(200).json({
       status: "sent",
-      message: "OTP generated successfully",
-      otp: code,
-    });
 
-  } catch (err) {
-    console.error("========== BREVO ERROR ==========");
-    console.error("Status:", err.response?.status);
-    console.error("Data:", err.response?.data);
-    console.error("Message:", err.message);
-    console.error("=================================");
+      message:
+        "OTP sent successfully.",
+
+      // DEVELOPMENT ONLY
+      // Remove this before production.
+      otp:
+        process.env.NODE_ENV ===
+        "production"
+          ? undefined
+          : code,
+    });
+  } catch (error) {
+    console.error(
+      "========== BREVO ERROR =========="
+    );
+
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+
+    console.error(
+      "Message:",
+      error.message
+    );
+
+    console.error(
+      "================================="
+    );
 
     return res.status(500).json({
-      error: "Could not send OTP. Please try again.",
+      error:
+        "Could not send OTP. Please try again.",
     });
   }
 });
-
 
 // =====================================================
 // VERIFY OTP
@@ -209,97 +504,158 @@ router.post("/otp/verify", async (req, res) => {
       email,
     } = req.body;
 
+    // -------------------------------------------------
+    // VALIDATE INPUT
+    // -------------------------------------------------
+
     if (!phone || !code) {
       return res.status(400).json({
-        error: "Phone and code are required.",
+        error:
+          "Phone and code are required.",
       });
     }
 
-    if (!isValidIndianPhone(phone)) {
+    const normalizedPhone =
+      String(phone).trim();
+
+    const normalizedCode =
+      String(code).trim();
+
+    if (!isValidIndianPhone(normalizedPhone)) {
       return res.status(400).json({
-        error: "Enter a valid 10-digit mobile number.",
+        error:
+          "Enter a valid 10-digit mobile number.",
       });
     }
 
-    const record = otpStore.get(phone);
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      return res.status(400).json({
+        error:
+          "OTP must be a 6-digit code.",
+      });
+    }
+
+    // -------------------------------------------------
+    // GET OTP
+    // -------------------------------------------------
+
+    const record =
+      otpStore.get(normalizedPhone);
 
     if (!record) {
       return res.status(400).json({
-        error: "No OTP requested for this number.",
+        error:
+          "No OTP requested for this number.",
       });
     }
 
-    // =================================================
-    // CHECK OTP EXPIRATION
-    // =================================================
+    // -------------------------------------------------
+    // CHECK EXPIRATION
+    // -------------------------------------------------
 
     if (Date.now() > record.expiresAt) {
-      otpStore.delete(phone);
+      otpStore.delete(normalizedPhone);
 
       return res.status(400).json({
-        error: "Code expired. Please request a new one.",
+        error:
+          "Code expired. Please request a new one.",
       });
     }
 
-    // =================================================
+    // -------------------------------------------------
     // CHECK OTP
-    // =================================================
+    // -------------------------------------------------
 
-    if (record.code !== code) {
+    if (record.code !== normalizedCode) {
       return res.status(400).json({
         error: "Incorrect code.",
       });
     }
 
-    // OTP is valid
-    otpStore.delete(phone);
+    // OTP is valid.
+    otpStore.delete(normalizedPhone);
 
-    // =================================================
+    // -------------------------------------------------
     // FIND EXISTING PHONE USER
-    // =================================================
+    // -------------------------------------------------
 
-    let profile = await Profile.findOne({
-      phone,
-    });
-
-    // =================================================
-    // CREATE USER IF NOT FOUND
-    // =================================================
-
-    if (!profile) {
-      profile = await Profile.create({
-        userId: generateUserId(),
-
-        name: name?.trim() || "Guest",
-
-        email: email?.trim().toLowerCase() || "",
-
-        phone,
-
-        provider: "phone",
-
-        accountType: "Free",
-
-        active: true,
+    let profile =
+      await Profile.findOne({
+        phone: normalizedPhone,
       });
 
+    // -------------------------------------------------
+    // CREATE USER IF NOT FOUND
+    // -------------------------------------------------
+
+    if (!profile) {
+      let normalizedEmail = "";
+
+      if (email?.trim()) {
+        normalizedEmail =
+          email.trim().toLowerCase();
+
+        if (
+          !isValidEmail(normalizedEmail)
+        ) {
+          return res.status(400).json({
+            error:
+              "Enter a valid email address.",
+          });
+        }
+      }
+
+      profile =
+        await Profile.create({
+          userId: generateUserId(),
+
+          name:
+            name?.trim() || "Guest",
+
+          email: normalizedEmail,
+
+          phone: normalizedPhone,
+
+          provider: "phone",
+
+          passwordHash: "",
+
+          accountType: "Free",
+
+          premiumCourses: [],
+
+          active: true,
+        });
+
       console.log(
-        `✅ New phone user created: ${phone}`
+        `✅ New phone user created: ${normalizedPhone}`
       );
-
     } else {
+      // -------------------------------------------------
+      // CHECK ACCOUNT STATUS
+      // -------------------------------------------------
 
-      // =================================================
+      if (profile.active === false) {
+        return res.status(403).json({
+          error:
+            "This account has been disabled.",
+        });
+      }
+
+      // -------------------------------------------------
       // UPDATE OPTIONAL INFORMATION
-      // =================================================
+      // -------------------------------------------------
 
       let changed = false;
 
       if (
         name?.trim() &&
-        profile.name === "Guest"
+        (!profile.name ||
+          profile.name === "Guest")
       ) {
-        profile.name = name.trim();
+        profile.name =
+          name.trim();
+
         changed = true;
       }
 
@@ -307,7 +663,21 @@ router.post("/otp/verify", async (req, res) => {
         email?.trim() &&
         !profile.email
       ) {
-        profile.email = email.trim().toLowerCase();
+        const normalizedEmail =
+          email.trim().toLowerCase();
+
+        if (
+          !isValidEmail(normalizedEmail)
+        ) {
+          return res.status(400).json({
+            error:
+              "Enter a valid email address.",
+          });
+        }
+
+        profile.email =
+          normalizedEmail;
+
         changed = true;
       }
 
@@ -316,17 +686,19 @@ router.post("/otp/verify", async (req, res) => {
       }
 
       console.log(
-        `✅ Existing phone user logged in: ${phone}`
+        `✅ Existing phone user logged in: ${normalizedPhone}`
       );
     }
 
-    // =================================================
+    // -------------------------------------------------
     // RETURN USER
-    // =================================================
+    // -------------------------------------------------
 
     return res.status(200).json({
       status: "approved",
-      message: "OTP verified successfully.",
+
+      message:
+        "OTP verified successfully.",
 
       user: {
         userId: profile.userId,
@@ -335,21 +707,27 @@ router.post("/otp/verify", async (req, res) => {
         phone: profile.phone,
         provider: profile.provider,
         accountType: profile.accountType,
-        premiumCourses: profile.premiumCourses,
+        premiumCourses:
+          profile.premiumCourses || [],
       },
     });
-
   } catch (error) {
-    console.error("========== OTP VERIFY ERROR ==========");
+    console.error(
+      "========== OTP VERIFY ERROR =========="
+    );
+
     console.error(error);
-    console.error("======================================");
+
+    console.error(
+      "======================================"
+    );
 
     return res.status(500).json({
-      error: "OTP verification failed. Please try again.",
+      error:
+        "OTP verification failed. Please try again.",
     });
   }
 });
-
 
 // =====================================================
 // LOGOUT
@@ -359,27 +737,51 @@ router.post("/logout", async (req, res) => {
   try {
     const { userId } = req.body;
 
-    console.log("=================================");
-    console.log("Logout request received");
-    console.log("User ID:", userId || "Not provided");
-    console.log("=================================");
+    console.log(
+      "================================="
+    );
+
+    console.log(
+      "Logout request received"
+    );
+
+    console.log(
+      "User ID:",
+      userId || "Not provided"
+    );
+
+    console.log(
+      "================================="
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Logout successful.",
-    });
 
+      message:
+        "Logout successful.",
+    });
   } catch (error) {
-    console.error("========== LOGOUT ERROR ==========");
+    console.error(
+      "========== LOGOUT ERROR =========="
+    );
+
     console.error(error);
-    console.error("=================================");
+
+    console.error(
+      "================================="
+    );
 
     return res.status(500).json({
       success: false,
-      error: "Logout failed. Please try again.",
+
+      error:
+        "Logout failed. Please try again.",
     });
   }
 });
 
+// =====================================================
+// EXPORT ROUTER
+// =====================================================
 
 module.exports = router;

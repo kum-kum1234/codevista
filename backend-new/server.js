@@ -17,18 +17,18 @@ const playgroundRoutes = require("./routes/playgroundRoutes");
 const communityRoutes = require("./routes/communityRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const noteSubjectRoutes = require("./routes/noteSubjectRoutes");
-const codeTogetherRoutes = require("./routes/codeTogetherRoutes");
+// const codeTogetherRoutes = require("./routes/codeTogetherRoutes");
 const helpRoutes = require("./routes/helpRoutes");
 const pythonHelpRoutes = require("./routes/pythonHelpRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const weeklyReportRoutes = require("./routes/weeklyReportRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
-const paymentController = require("./controllers/paymentController");
 const coursePurchaseRoutes = require("./routes/coursePurchaseRoutes");
-//const aiMentorRoutes = require("./routes/aiMentor");
-const app = express();
+const progressRoutes = require("./routes/progress");
+// const aiMentorRoutes = require("./routes/aiMentor");
 
+const app = express();
 
 // =====================================================
 // DATABASE CONNECTION
@@ -36,28 +36,25 @@ const app = express();
 
 connectDB();
 
-
 // =====================================================
-// MIDDLEWARE
+// CORS
 // =====================================================
 
 app.use(cors());
 
-
 // =====================================================
-// STRIPE WEBHOOK
+// STRIPE COURSE PURCHASE WEBHOOK
+//
 // IMPORTANT:
 // This MUST come BEFORE express.json()
 // because Stripe signature verification requires
 // the original raw request body.
 // =====================================================
 
-app.post(
-  "/api/payments/webhook",
-  express.raw({ type: "application/json" }),
-  paymentController.handleStripeWebhook
+app.use(
+  "/api/stripe",
+  require("./routes/stripeWebhook")
 );
-
 
 // =====================================================
 // NORMAL JSON MIDDLEWARE
@@ -65,19 +62,24 @@ app.post(
 
 app.use(express.json());
 
-
 // =====================================================
 // API ROUTES
 // =====================================================
 
 // Weekly Progress Report APIs
 app.use("/api/weekly-report", weeklyReportRoutes);
+
+// Course Purchase APIs
 app.use(
   "/api/course-purchases",
   coursePurchaseRoutes
 );
+
 // Course APIs
 app.use("/api/courses", courseRoutes);
+
+// Progress APIs
+app.use("/api/progress", progressRoutes);
 
 // Community APIs
 app.use("/api/community", communityRoutes);
@@ -90,10 +92,12 @@ app.use("/api/payments", paymentRoutes);
 
 // Lesson APIs
 app.use("/api/lessons", lessonRoutes);
+
 // AI Mentor APIs
-//app.use("/api/ai", aiMentorRoutes);
+// app.use("/api/ai", aiMentorRoutes);
+
 // Code Together APIs
-app.use("/api/code-together", codeTogetherRoutes);
+// app.use("/api/code-together", codeTogetherRoutes);
 
 // Help APIs
 app.use("/api/help", helpRoutes);
@@ -125,7 +129,6 @@ app.use("/api/python-help", pythonHelpRoutes);
 // Profile APIs
 app.use("/api/profile", profileRoutes);
 
-
 // =====================================================
 // TEST ROUTE
 // =====================================================
@@ -137,7 +140,6 @@ app.get("/", (req, res) => {
   });
 });
 
-
 // =====================================================
 // AUTOMATIC WEEKLY PROGRESS REPORT
 // Runs every Monday at 9:00 AM IST
@@ -146,7 +148,9 @@ app.get("/", (req, res) => {
 cron.schedule(
   "0 9 * * 1",
   async () => {
-    console.log("📊 Running weekly progress report job...");
+    console.log(
+      "📊 Running weekly progress report job..."
+    );
 
     try {
       const profiles = await Profile.find({
@@ -166,7 +170,9 @@ cron.schedule(
 
           console.log(
             `Weekly report for ${profile.userId}:`,
-            result.skipped ? "skipped" : "sent"
+            result.skipped
+              ? "skipped"
+              : "sent"
           );
         } catch (error) {
           console.error(
@@ -176,7 +182,9 @@ cron.schedule(
         }
       }
 
-      console.log("✅ Weekly progress report job completed");
+      console.log(
+        "✅ Weekly progress report job completed"
+      );
     } catch (error) {
       console.error(
         "❌ Weekly progress report job failed:",
@@ -189,7 +197,6 @@ cron.schedule(
   }
 );
 
-
 // =====================================================
 // SERVER
 // =====================================================
@@ -197,6 +204,11 @@ cron.schedule(
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log("📅 Weekly progress report scheduler is active");
+  console.log(
+    `🚀 Server running on port ${PORT}`
+  );
+
+  console.log(
+    "📅 Weekly progress report scheduler is active"
+  );
 });

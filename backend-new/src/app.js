@@ -11,7 +11,7 @@ const playgroundRoutes = require("../routes/playgroundRoutes");
 const communityRoutes = require("../routes/communityRoutes");
 const noteRoutes = require("../routes/noteRoutes");
 const noteSubjectRoutes = require("../routes/noteSubjectRoutes");
-const codeTogetherRoutes = require("../routes/codeTogetherRoutes");
+//const codeTogetherRoutes = require("../routes/codeTogetherRoutes");
 const helpRoutes = require("../routes/helpRoutes");
 const pythonHelpRoutes = require("../routes/pythonHelpRoutes");
 const profileRoutes = require("../routes/profileRoutes");
@@ -72,7 +72,7 @@ app.use("/api/lessons", lessonRoutes);
 // const aiMentorRoutes = require("../routes/aiMentor");
 // app.use("/api/ai", aiMentorRoutes);
 
-app.use("/api/code-together", codeTogetherRoutes);
+//app.use("/api/code-together", codeTogetherRoutes);
 
 app.use("/api/help", helpRoutes);
 

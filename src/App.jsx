@@ -15,7 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import CoursePage from "./pages/CoursePage";
 import CoursesMarketing from "./pages/CoursesMarketing";
-
+import Register from "./pages/Register";
 import WhyUs from "./pages/WhyUs";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
@@ -75,7 +75,11 @@ export default function App() {
         <Route path="/faq" element={<FAQ />} />
 
         <Route path="/contact" element={<Contact />} />
-
+        <Route
+  path="/register"
+  element={<Register />}
+/>
+     
 
         {/* ==================================================
             PROTECTED MAIN APP

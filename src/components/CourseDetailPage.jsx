@@ -11,11 +11,11 @@ import {
 import AppLayout from "./AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
 import { getCurrentUser } from "../utils/auth";
-import {
+/*import {
   createCourseCheckoutSession,
   getCoursePurchaseStatus,
 } from "../services/api";
-
+*/
 const DASH_GRADIENT =
   "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
@@ -68,9 +68,9 @@ export default function CourseDetailPage({
   const [accessType, setAccessType] =
     useState("");
 
-  const [coursePaymentLoading, setCoursePaymentLoading] =
+  /*const [coursePaymentLoading, setCoursePaymentLoading] =
     useState(false);
-
+*/
   const [accessLoading, setAccessLoading] =
     useState(true);
 
@@ -152,7 +152,7 @@ export default function CourseDetailPage({
       navigate(firstLesson.path);
     }
   };
-
+/*
   // =====================================================
   // COURSE PURCHASE
   // =====================================================
@@ -233,7 +233,7 @@ export default function CourseDetailPage({
       );
     }
   };
-
+*/
   // =====================================================
   // RENDER
   // =====================================================
@@ -260,7 +260,7 @@ export default function CourseDetailPage({
               <h1 className="text-lg font-extrabold text-[#241B4E]">
                 {title}
               </h1>
-
+          {/*
               <span
                 className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold"
                 style={{
@@ -271,7 +271,7 @@ export default function CourseDetailPage({
               >
                 🔒 {badge}
               </span>
-
+*/}
             </div>
 
             <p className="mt-1 text-xs text-slate-500 max-w-xl leading-relaxed">
@@ -371,9 +371,8 @@ export default function CourseDetailPage({
 
               {lessons.map((lesson, i) => {
 
-                const canOpenLesson =
-                  !lesson.locked ||
-                  courseAccess;
+                // All lessons are free and unlocked
+                  const canOpenLesson = true;
 
                 return (
                   <div
@@ -554,7 +553,7 @@ export default function CourseDetailPage({
             </div>
 
             {/* PREMIUM CONTENT */}
-
+            {/*
             <div
               className="rounded-xl border p-4"
               style={{
@@ -577,20 +576,20 @@ export default function CourseDetailPage({
               </p>
 
             </div>
-
+         */}
             {/* TRY FIRST LESSON */}
-
+           {/*
             <button
               onClick={handleStartFirstLesson}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#241B4E] hover:bg-slate-50"
             >
               Try First Lesson Free
             </button>
-
+*/}
             {/* =================================================
                 STRIPE COURSE PURCHASE BUTTON
             ================================================= */}
-
+{/*
             <button
               onClick={handleCoursePurchase}
               disabled={
@@ -613,7 +612,7 @@ export default function CourseDetailPage({
                   : "Full Access Unlocked"
                 : "Get Full Access — ₹1,499"}
             </button>
-
+*/}
           </div>
 
         </div>

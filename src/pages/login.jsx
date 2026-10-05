@@ -189,26 +189,153 @@ export default function Login() {
   // NOTE:
   // This remains the existing frontend/demo email flow
   // because no email-login backend endpoint was provided.
+  async function handleEmailSubmit(e) {
+  e.preventDefault();
 
-  function handleEmailSubmit(e) {
-    e.preventDefault();
+  const email = form.email.trim().toLowerCase();
+  const password = form.password;
 
-    setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-
-      setCurrentUser({
-        name: nameFromEmail(form.email),
-        email: form.email,
-        provider: "email",
-        accountType: "Free",
-      });
-
-      navigate("/dashboard");
-    }, 500);
+  if (!email || !password) {
+    alert("Email and password are required.");
+    return;
   }
 
+  setLoading(true);
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        data.error || "Login failed. Please try again."
+      );
+    }
+
+    // ---------------------------------------------
+    // LOGIN SUCCESSFUL
+    // ---------------------------------------------
+
+    if (!data.user) {
+      throw new Error("Invalid login response from server.");
+    }
+
+    setCurrentUser(data.user);
+
+    navigate("/dashboard", {
+      replace: true,
+    });
+
+  } catch (error) {
+    console.error("Email login failed:", error);
+
+    alert(
+      error.message ||
+        "Incorrect email or password."
+    );
+
+  } finally {
+    setLoading(false);
+  }
+}
+ // =====================================================
+// EMAIL REGISTRATION
+// =====================================================
+
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+
+  const email = form.email.trim().toLowerCase();
+  const password = form.password;
+
+  // -------------------------------------------------
+  // VALIDATE INPUT
+  // -------------------------------------------------
+
+  if (!email || !password) {
+    alert("Email and password are required.");
+    return;
+  }
+
+  if (password.length < 6) {
+    alert("Password must be at least 6 characters.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // -------------------------------------------------
+    // CREATE ACCOUNT
+    // -------------------------------------------------
+
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    // -------------------------------------------------
+    // REGISTRATION FAILED
+    // -------------------------------------------------
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          "Registration failed. Please try again."
+      );
+    }
+
+    // -------------------------------------------------
+    // REGISTRATION SUCCESSFUL
+    // -------------------------------------------------
+
+    alert(
+      "Account created successfully! Please login with your email and password."
+    );
+
+    // Clear password
+    setForm((f) => ({
+      ...f,
+      password: "",
+    }));
+
+    // Go to email login screen
+    setMode("email");
+
+  } catch (error) {
+    console.error(
+      "Registration failed:",
+      error
+    );
+
+    alert(
+      error.message ||
+        "Registration failed. Please try again."
+    );
+
+  } finally {
+    setLoading(false);
+  }
+}
+  
   // =====================================================
   // INITIAL PHONE BUTTON
   // =====================================================
@@ -795,6 +922,22 @@ export default function Login() {
                     Back
                   </button>
                 </form>
+                <div className="mt-5 border-t border-slate-100 pt-4 text-center">
+  <p className="text-sm text-slate-400">
+    Don't have an account?
+  </p>
+
+  <button
+    type="button"
+    onClick={() => navigate("/register")}
+    className="mt-1 text-sm font-medium"
+    style={{
+      color: "#8B5CF6",
+    }}
+  >
+    Create an account
+  </button>
+</div>
               </>
             )}
 

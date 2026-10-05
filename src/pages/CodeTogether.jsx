@@ -25,8 +25,10 @@ import {
   cancelCodeTogetherRegistration,
 } from "../services/api";
 
+// Shared styling used throughout the Code Together experience.
 const GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 
+// Calendar labels used by the registration month view.
 const MONTH_NAMES = [
   "January",
   "February",
@@ -42,8 +44,10 @@ const MONTH_NAMES = [
   "December",
 ];
 
+// Weekly day names shown in the schedule grid.
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Move a date to the next occurrence of the configured weekly session day.
 function getNextScheduledDay(date, scheduleDay) {
   const result = new Date(date);
   const dayMap = {
@@ -64,6 +68,7 @@ function getNextScheduledDay(date, scheduleDay) {
   return result;
 }
 
+// Parse a time string such as "4:00 PM" into a usable JavaScript time object.
 function parseScheduleTime(timeValue) {
   if (!timeValue) return null;
 
@@ -90,6 +95,7 @@ function parseScheduleTime(timeValue) {
   return { hours, minutes };
 }
 
+// Build the actual session date for a scheduled weekly session.
 function getSessionDate(date, scheduleDay, timeValue) {
   const sessionDate = getNextScheduledDay(date, scheduleDay);
   const parsed = parseScheduleTime(timeValue);
@@ -103,6 +109,7 @@ function getSessionDate(date, scheduleDay, timeValue) {
   return sessionDate;
 }
 
+// Convert a Date into a YYYY-MM-DD key for consistent comparisons and storage.
 function toDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -110,6 +117,7 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+// Check whether two dates fall on the same calendar day.
 function isSameDay(a, b) {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -118,6 +126,7 @@ function isSameDay(a, b) {
   );
 }
 
+// Default form object used when a parent opens the registration modal.
 function emptyForm(user) {
   return {
     studentName: user?.name || "",
@@ -128,6 +137,7 @@ function emptyForm(user) {
   };
 }
 
+// Fallback content shipped when the API has not yet returned page content.
 const EMPTY_CONTENT = {
   banner: {
     label: "",
@@ -159,8 +169,10 @@ const EMPTY_CONTENT = {
 };
 
 export default function CodeTogether() {
+  // Capture the current date once so the page stays stable during a single render.
   const today = useMemo(() => new Date(), []);
 
+  // Read the signed-in user data once and derive the best ID for API calls.
   const currentUser = useMemo(() => getCurrentUser(), []);
   const userId =
     currentUser?.id ||
@@ -170,20 +182,27 @@ export default function CodeTogether() {
     currentUser?.phone ||
     "";
 
+  // Page content from the backend, plus dates the current user has already registered for.
   const [content, setContent] = useState(EMPTY_CONTENT);
   const [registrations, setRegistrations] = useState([]);
+
+  // Calendar month currently being displayed in the registration list.
   const [viewDate, setViewDate] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
   );
+  // Registration modal and form state.
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => emptyForm(currentUser));
   const [errors, setErrors] = useState({});
+  // Feedback and loading indicators used across the page.
   const [justRegistered, setJustRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pageError, setPageError] = useState("");
+  // Keep the current time updated so the upcoming session banner stays accurate.
   const [now, setNow] = useState(() => new Date());
 
+  // Refresh the live clock every 30 seconds to keep session timing current.
   useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(new Date());
@@ -192,6 +211,7 @@ export default function CodeTogether() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Load the page content and the signed-in user's session registrations from the API.
   useEffect(() => {
     let cancelled = false;
 
@@ -230,9 +250,11 @@ export default function CodeTogether() {
     };
   }, [userId]);
 
+  // Pull the most relevant content from the backend with safe fallback values.
   const schedule = content.schedule || EMPTY_CONTENT.schedule;
   const zoom = content.zoom || EMPTY_CONTENT.zoom;
 
+  // Determine the next session start and end time based on the configured weekly schedule.
   const { sessionStart, sessionEnd } = useMemo(() => {
     const scheduleDay = schedule.day || "Saturday";
     const startTime = schedule.startTime || "4:00 PM";
@@ -289,12 +311,14 @@ export default function CodeTogether() {
     schedule.endTime,
   ]);
 
+  // The upcoming session key and registration state used by the CTA and status message.
   const nextSessionKey = toDateKey(sessionStart);
   const isCurrentSession =
     now >= sessionStart && now < sessionEnd;
   const isNextSessionRegistered =
     registrations.includes(nextSessionKey);
 
+  // Build the correct Zoom join text depending on whether the learner is already registered.
   const joinStatus = {
     state: isNextSessionRegistered ? "registered" : "unregistered",
     buttonText:
@@ -310,9 +334,11 @@ export default function CodeTogether() {
         ),
   };
 
+  // Backward-compatible alias used by older UI logic and labels on the page.
   const isNextSaturdayRegistered =
     registrations.includes(nextSessionKey);
 
+  // Toggle a registration for a selected scheduled date.
   async function handleToggle(dateKey) {
     if (!userId || saving) return;
 
@@ -336,6 +362,7 @@ export default function CodeTogether() {
     }
   }
 
+  // Open the registration form, or cancel the current registration if already registered.
   function openRegisterForm() {
     if (isNextSaturdayRegistered) {
       handleToggle(nextSessionKey);
@@ -348,11 +375,13 @@ export default function CodeTogether() {
     setShowForm(true);
   }
 
+  // Update a single field in the registration form and clear only that field's error.
   function updateField(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
   }
 
+  // Validate the registration form before submitting to the backend.
   function validate() {
     const next = {};
 
@@ -388,6 +417,7 @@ export default function CodeTogether() {
     return next;
   }
 
+  // Submit the registration payload and update the local registrations list after success.
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -432,12 +462,14 @@ export default function CodeTogether() {
     }
   }
 
+  // Move the calendar month forward or backward in the registrations view.
   function changeMonth(delta) {
     setViewDate(
       (d) => new Date(d.getFullYear(), d.getMonth() + delta, 1)
     );
   }
 
+  // Build the grid for the current month so scheduled dates can be highlighted.
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -455,6 +487,7 @@ export default function CodeTogether() {
     ),
   ];
 
+  // Filter the user's registrations down to upcoming dates only.
   const upcomingRegistrations = registrations
     .filter(
       (k) =>
@@ -463,6 +496,7 @@ export default function CodeTogether() {
     )
     .sort();
 
+  // Show a loading state while the page data is still being fetched.
   if (loading) {
     return (
       <AppLayout active="code-together">
@@ -475,6 +509,7 @@ export default function CodeTogether() {
     );
   }
 
+  // Pull the dynamic experience options and content cards from the backend.
   const experienceLevels = Array.isArray(content.experienceLevels)
     ? content.experienceLevels
     : [];
@@ -488,12 +523,13 @@ export default function CodeTogether() {
   return (
     <AppLayout active="code-together">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Errors from API calls or form validation are surfaced here at the top of the page. */}
         {pageError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
             {pageError}
           </div>
         )}
-        {/* Community banner */}
+        {/* Header banner that introduces the Code Together community section. */}
         <div className="flex items-start gap-4 rounded-2xl border border-pk-border bg-white p-5">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
@@ -512,7 +548,7 @@ export default function CodeTogether() {
           </div>
         </div>
 
-        {/* Weekly Schedule */}
+        {/* Weekly recurring session details and the register/cancel action. */}
         <div className="rounded-2xl border border-pk-border bg-white p-6">
           <div className="flex items-center gap-2 mb-5">
             <span
@@ -580,7 +616,7 @@ export default function CodeTogether() {
           )}
         </div>
 
-        {/* How to Join In */}
+        {/* Step-by-step instructions for joining the live session and opening Zoom. */}
         <div className="rounded-2xl border border-pk-border bg-white p-6">
           <div className="flex items-center gap-2 mb-5">
             <span
@@ -636,7 +672,7 @@ export default function CodeTogether() {
           </div>
         </div>
 
-        {/* Your Registrations */}
+        {/* The month-based registrations calendar that highlights scheduled and registered dates. */}
         <div className="rounded-2xl border border-pk-border bg-white p-6">
           <div className="flex items-center gap-2 mb-1">
             <span
@@ -753,7 +789,7 @@ export default function CodeTogether() {
           </div>
         </div>
 
-        {/* What We Do */}
+        {/* The learning activities and experiences offered during the session. */}
         <div className="rounded-2xl border border-pk-border bg-white p-6">
           <div className="flex items-center gap-2 mb-5">
             <span
@@ -782,7 +818,7 @@ export default function CodeTogether() {
           </div>
         </div>
 
-        {/* For Parents */}
+        {/* Parent-facing reassurance section explaining the program and safety expectations. */}
         <div className="rounded-2xl border border-pk-border bg-white p-6 mb-2">
           <div className="flex items-center gap-2 mb-3">
             <span
@@ -799,6 +835,7 @@ export default function CodeTogether() {
         </div>
       </div>
 
+      {/* Registration modal shown only after the learner selects the register action. */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -929,6 +966,7 @@ export default function CodeTogether() {
   );
 }
 
+// Format a Date into a user-friendly time string for session status messages.
 function formatTime(date) {
   return new Intl.DateTimeFormat("en-IN", {
     hour: "numeric",
@@ -938,6 +976,7 @@ function formatTime(date) {
   }).format(date);
 }
 
+// Format a Date into a readable day/month label used in status messaging.
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-IN", {
     weekday: "long",
@@ -947,6 +986,7 @@ function formatDate(date) {
   }).format(date);
 }
 
+// Build the Zoom-related messaging shown before registration is complete.
 function zoomMessage(state, schedule, sessionStart) {
   if (state === "unregistered") {
     return (
@@ -961,6 +1001,7 @@ function zoomMessage(state, schedule, sessionStart) {
   return "";
 }
 
+// Shared CSS class helper for form inputs with and without validation errors.
 function inputClass(hasError) {
   return `w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
     hasError
@@ -969,6 +1010,7 @@ function inputClass(hasError) {
   }`;
 }
 
+// Reusable label-and-input wrapper used throughout the registration modal.
 function FormField({ icon: Icon, label, error, children }) {
   return (
     <div className="mb-3">
@@ -982,6 +1024,7 @@ function FormField({ icon: Icon, label, error, children }) {
   );
 }
 
+// Simple row component used in the weekly schedule summary cards.
 function ScheduleItem({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">

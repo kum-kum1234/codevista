@@ -1,28 +1,86 @@
 const mongoose = require("mongoose");
 
+/* =====================================================
+   NOTIFICATION SCHEMA
+   ===================================================== */
+
 const notificationSchema = new mongoose.Schema(
   {
-    courseUpdates: { type: Boolean, default: true },
-    achievements: { type: Boolean, default: true },
-    weeklyReport: { type: Boolean, default: true },
+    courseUpdates: {
+      type: Boolean,
+      default: true,
+    },
+
+    achievements: {
+      type: Boolean,
+      default: true,
+    },
+
+    weeklyReport: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { _id: false }
+  {
+    _id: false,
+  }
 );
+
+/* =====================================================
+   SUBSCRIPTION SCHEMA
+   ===================================================== */
 
 const subscriptionSchema = new mongoose.Schema(
   {
-    plan: { type: String, default: "Free" },
-    description: { type: String, default: "" },
-    benefits: { type: [String], default: [] },
-    price: { type: Number, default: 0 },
-    period: { type: String, default: "per annum" },
-    status: { type: String, default: "active" },
+    plan: {
+      type: String,
+      default: "Free",
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    benefits: {
+      type: [String],
+      default: [],
+    },
+
+    price: {
+      type: Number,
+      default: 0,
+    },
+
+    period: {
+      type: String,
+      default: "per annum",
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      default: "active",
+      trim: true,
+    },
   },
-  { _id: false }
+  {
+    _id: false,
+  }
 );
+
+/* =====================================================
+   PROFILE SCHEMA
+   ===================================================== */
 
 const profileSchema = new mongoose.Schema(
   {
+    /* ===================================================
+       USER ID
+       =================================================== */
+
     userId: {
       type: String,
       required: true,
@@ -30,6 +88,10 @@ const profileSchema = new mongoose.Schema(
       index: true,
       trim: true,
     },
+
+    /* ===================================================
+       BASIC USER INFORMATION
+       =================================================== */
 
     name: {
       type: String,
@@ -52,38 +114,55 @@ const profileSchema = new mongoose.Schema(
 
     provider: {
       type: String,
+      enum: ["email", "phone", "google"],
       default: "email",
       trim: true,
     },
 
-    // =====================================================
-    // ACCOUNT TYPE
-    // Free          = No Premium access
-    // CoursePremium = Individual course access
-    // Premium       = Complete Premium access
-    // =====================================================
+    /* ===================================================
+       PASSWORD
+
+       Password is NEVER stored directly.
+
+       Only bcrypt hash is stored.
+
+       IMPORTANT:
+       select: false means passwordHash is hidden from
+       normal MongoDB queries.
+
+       Login must use:
+       .select("+passwordHash")
+       =================================================== */
+
+    passwordHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    /* ===================================================
+       ACCOUNT TYPE
+       =================================================== */
 
     accountType: {
       type: String,
+      enum: ["Free", "CoursePremium", "Premium"],
       default: "Free",
       trim: true,
     },
 
-    // =====================================================
-    // INDIVIDUAL COURSE ACCESS
-    // Used for the ₹1,499 course-specific plan.
-    //
-    // Example:
-    // premiumCourses: ["python-starters"]
-    //
-    // A Complete Premium user does not need this because
-    // accountType === "Premium" already gives access to all.
-    // =====================================================
+    /* ===================================================
+       INDIVIDUAL COURSE ACCESS
+       =================================================== */
 
     premiumCourses: {
       type: [String],
       default: [],
     },
+
+    /* ===================================================
+       LEARNING PROGRESS
+       =================================================== */
 
     overallProgress: {
       type: Number,
@@ -104,28 +183,46 @@ const profileSchema = new mongoose.Schema(
       min: 0,
     },
 
+    /* ===================================================
+       NOTIFICATIONS
+       =================================================== */
+
     notifications: {
       type: notificationSchema,
       default: () => ({}),
     },
 
+    /* ===================================================
+       SUBSCRIPTION
+       =================================================== */
+
     subscription: {
       type: subscriptionSchema,
+
       default: () => ({
         plan: "Free",
+
         description:
           "Upgrade to Premium for full access to all courses and features",
+
         benefits: [
           "Access to all courses and updates",
           "Project files and source code downloads",
           "Live coding sessions with instructors",
           "Certificates upon course completion",
         ],
+
         price: 4999,
+
         period: "per annum",
+
         status: "active",
       }),
     },
+
+    /* ===================================================
+       ACCOUNT STATUS
+       =================================================== */
 
     active: {
       type: Boolean,
@@ -133,11 +230,20 @@ const profileSchema = new mongoose.Schema(
       index: true,
     },
   },
+
+  /* =====================================================
+     SCHEMA OPTIONS
+     ===================================================== */
+
   {
     timestamps: true,
     collection: "profiles",
   }
 );
+
+/* =====================================================
+   EXPORT MODEL
+   ===================================================== */
 
 module.exports =
   mongoose.models.Profile ||
