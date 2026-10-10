@@ -1,5 +1,5 @@
 const express = require("express");
-const axios = require("axios");
+//const axios = require("axios");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
@@ -343,6 +343,8 @@ router.post("/login", async (req, res) => {
 // =====================================================
 // SEND OTP
 // =====================================================
+// OTP is generated locally and displayed on the website.
+// =====================================================
 
 router.post("/otp/send", async (req, res) => {
   try {
@@ -358,13 +360,11 @@ router.post("/otp/send", async (req, res) => {
       });
     }
 
-    const normalizedPhone =
-      String(phone).trim();
+    const normalizedPhone = String(phone).trim();
 
     if (!isValidIndianPhone(normalizedPhone)) {
       return res.status(400).json({
-        error:
-          "Enter a valid 10-digit mobile number.",
+        error: "Enter a valid 10-digit mobile number.",
       });
     }
 
@@ -387,110 +387,40 @@ router.post("/otp/send", async (req, res) => {
     });
 
     // -------------------------------------------------
-    // CHECK BREVO CONFIGURATION
+    // DEVELOPMENT / TESTING
     // -------------------------------------------------
-
-    if (
-      !process.env.BREVO_API_KEY ||
-      !process.env.BREVO_SENDER_NAME
-    ) {
-      console.error(
-        "❌ Brevo environment variables are missing."
-      );
-
-      otpStore.delete(normalizedPhone);
-
-      return res.status(500).json({
-        error:
-          "OTP service is not configured.",
-      });
-    }
-
-    // -------------------------------------------------
-    // SEND OTP USING BREVO
-    // -------------------------------------------------
-
-    const response = await axios.post(
-      "https://api.brevo.com/v3/transactionalSMS/send",
-      {
-        sender:
-          process.env.BREVO_SENDER_NAME,
-
-        recipient:
-          `91${normalizedPhone}`,
-
-        content:
-          `Your CodeVista OTP is ${code}. Valid for 5 minutes.`,
-
-        type: "transactional",
-      },
-      {
-        headers: {
-          "api-key":
-            process.env.BREVO_API_KEY,
-
-          accept: "application/json",
-
-          "content-type":
-            "application/json",
-        },
-      }
-    );
 
     console.log(
-      "Brevo response:",
-      response.data
+      `📱 OTP for ${normalizedPhone}: ${code}`
     );
 
     // -------------------------------------------------
-    // SUCCESS
+    // RETURN OTP TO WEBSITE
     // -------------------------------------------------
 
     return res.status(200).json({
       status: "sent",
-
-      message:
-        "OTP sent successfully.",
-
-      // DEVELOPMENT ONLY
-      // Remove this before production.
-      otp:
-        process.env.NODE_ENV ===
-        "production"
-          ? undefined
-          : code,
+      message: "OTP generated successfully.",
+      otp: code,
     });
+
   } catch (error) {
     console.error(
-      "========== BREVO ERROR =========="
+      "========== OTP SEND ERROR =========="
     );
 
-    console.error(
-      "Status:",
-      error.response?.status
-    );
+    console.error(error);
 
     console.error(
-      "Data:",
-      error.response?.data
-    );
-
-    console.error(
-      "Message:",
-      error.message
-    );
-
-    console.error(
-      "================================="
+      "===================================="
     );
 
     return res.status(500).json({
       error:
-        "Could not send OTP. Please try again.",
+        "Could not generate OTP. Please try again.",
     });
   }
 });
-
 // =====================================================
 // VERIFY OTP
 // =====================================================

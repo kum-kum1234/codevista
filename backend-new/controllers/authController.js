@@ -1,10 +1,25 @@
-const axios = require("axios");
+// =====================================================
+// AUTH CONTROLLER
+// =====================================================
+
+// Brevo and Axios removed.
+// OTP is generated locally and returned to the website.
 
 const otpStore = new Map(); // phone -> { code, expiresAt }
+
+
+// =====================================================
+// VALIDATE INDIAN PHONE
+// =====================================================
 
 function isValidIndianPhone(phone) {
   return /^[6-9]\d{9}$/.test(phone);
 }
+
+
+// =====================================================
+// GENERATE OTP
+// =====================================================
 
 function generateOtp() {
   return Math.floor(
@@ -12,88 +27,94 @@ function generateOtp() {
   ).toString();
 }
 
+
 // =====================================================
 // SEND OTP
 // =====================================================
+// OTP is generated locally.
+// No Brevo or SMS service is used.
+// OTP is returned to the website for testing.
+// =====================================================
 
 const sendOtp = async (req, res) => {
-  const { phone } = req.body;
-
-  if (!phone) {
-    return res.status(400).json({
-      error: "Phone number is required.",
-    });
-  }
-
-  if (!isValidIndianPhone(phone)) {
-    return res.status(400).json({
-      error: "Enter a valid 10-digit mobile number.",
-    });
-  }
-
-  const code = generateOtp();
-  const expiresAt =
-    Date.now() + 5 * 60 * 1000;
-
-  otpStore.set(phone, {
-    code,
-    expiresAt,
-  });
-
   try {
-    const response = await axios.post(
-      "https://api.brevo.com/v3/transactionalSMS/send",
-      {
-        sender: process.env.BREVO_SENDER_NAME,
-        recipient: `91${phone}`,
-        content: `Your CodeVista OTP is ${code}. Valid for 5 minutes.`,
-        type: "transactional",
-      },
-      {
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          accept: "application/json",
-          "content-type": "application/json",
-        },
-      }
-    );
+    const { phone } = req.body;
+
+    // -------------------------------------------------
+    // VALIDATE PHONE
+    // -------------------------------------------------
+
+    if (!phone) {
+      return res.status(400).json({
+        error: "Phone number is required.",
+      });
+    }
+
+    const normalizedPhone =
+      String(phone).trim();
+
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return res.status(400).json({
+        error:
+          "Enter a valid 10-digit mobile number.",
+      });
+    }
+
+    // -------------------------------------------------
+    // GENERATE OTP
+    // -------------------------------------------------
+
+    const code = generateOtp();
+
+    const expiresAt =
+      Date.now() + 5 * 60 * 1000;
+
+    // -------------------------------------------------
+    // STORE OTP
+    // -------------------------------------------------
+
+    otpStore.set(normalizedPhone, {
+      code,
+      expiresAt,
+    });
+
+    // -------------------------------------------------
+    // DISPLAY OTP IN BACKEND CONSOLE
+    // -------------------------------------------------
 
     console.log(
-      "Brevo response:",
-      response.data
+      `📱 OTP for ${normalizedPhone}: ${code}`
     );
+
+    // -------------------------------------------------
+    // RETURN OTP TO WEBSITE
+    // -------------------------------------------------
 
     return res.status(200).json({
       status: "sent",
-      message: "OTP generated successfully",
+      message:
+        "OTP generated successfully.",
       otp: code,
     });
-  } catch (err) {
+
+  } catch (error) {
     console.error(
-      "========== BREVO ERROR =========="
+      "========== OTP SEND ERROR =========="
     );
+
+    console.error(error);
+
     console.error(
-      "Status:",
-      err.response?.status
-    );
-    console.error(
-      "Data:",
-      err.response?.data
-    );
-    console.error(
-      "Message:",
-      err.message
-    );
-    console.error(
-      "================================="
+      "===================================="
     );
 
     return res.status(500).json({
       error:
-        "Could not send OTP. Please try again.",
+        "Could not generate OTP. Please try again.",
     });
   }
 };
+
 
 // =====================================================
 // VERIFY OTP
@@ -102,13 +123,51 @@ const sendOtp = async (req, res) => {
 const verifyOtp = (req, res) => {
   const { phone, code } = req.body;
 
+  // -------------------------------------------------
+  // VALIDATE INPUT
+  // -------------------------------------------------
+
   if (!phone || !code) {
     return res.status(400).json({
-      error: "Phone and code are required.",
+      error:
+        "Phone and code are required.",
     });
   }
 
-  const record = otpStore.get(phone);
+  const normalizedPhone =
+    String(phone).trim();
+
+  const normalizedCode =
+    String(code).trim();
+
+  // -------------------------------------------------
+  // VALIDATE PHONE
+  // -------------------------------------------------
+
+  if (!isValidIndianPhone(normalizedPhone)) {
+    return res.status(400).json({
+      error:
+        "Enter a valid 10-digit mobile number.",
+    });
+  }
+
+  // -------------------------------------------------
+  // VALIDATE OTP FORMAT
+  // -------------------------------------------------
+
+  if (!/^\d{6}$/.test(normalizedCode)) {
+    return res.status(400).json({
+      error:
+        "OTP must be a 6-digit code.",
+    });
+  }
+
+  // -------------------------------------------------
+  // GET STORED OTP
+  // -------------------------------------------------
+
+  const record =
+    otpStore.get(normalizedPhone);
 
   if (!record) {
     return res.status(400).json({
@@ -117,8 +176,12 @@ const verifyOtp = (req, res) => {
     });
   }
 
+  // -------------------------------------------------
+  // CHECK OTP EXPIRATION
+  // -------------------------------------------------
+
   if (Date.now() > record.expiresAt) {
-    otpStore.delete(phone);
+    otpStore.delete(normalizedPhone);
 
     return res.status(400).json({
       error:
@@ -126,18 +189,37 @@ const verifyOtp = (req, res) => {
     });
   }
 
-  if (record.code !== code) {
+  // -------------------------------------------------
+  // CHECK OTP
+  // -------------------------------------------------
+
+  if (record.code !== normalizedCode) {
     return res.status(400).json({
       error: "Incorrect code.",
     });
   }
 
-  otpStore.delete(phone);
+  // -------------------------------------------------
+  // OTP VERIFIED
+  // -------------------------------------------------
 
-  return res.json({
+  otpStore.delete(normalizedPhone);
+
+  console.log(
+    `✅ OTP verified for ${normalizedPhone}`
+  );
+
+  return res.status(200).json({
     status: "approved",
+    message:
+      "OTP verified successfully.",
   });
 };
+
+
+// =====================================================
+// EXPORT CONTROLLER
+// =====================================================
 
 module.exports = {
   sendOtp,
