@@ -591,6 +591,13 @@ async function getPaymentStatus(req, res) {
       });
     }
 
+    if (String(payment.userId) !== String(req.user && req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only access your own data",
+      });
+    }
+
     return res.json({
       success: true,
 

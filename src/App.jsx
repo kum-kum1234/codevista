@@ -14,7 +14,6 @@ import Dashboard from "./pages/Dashboard";
 
 import Courses from "./pages/Courses";
 import CoursePage from "./pages/CoursePage";
-import CoursesMarketing from "./pages/CoursesMarketing";
 import Register from "./pages/Register";
 import WhyUs from "./pages/WhyUs";
 import FAQ from "./pages/FAQ";
@@ -36,6 +35,7 @@ import Notes from "./pages/notes";
 //import FloatingAIMentor from "./components/FloatingAIMentor";
 
 import { getCurrentUser } from "./utils/auth";
+import AchievementPopups from "./components/AchievementPopups";
 
 
 // ======================================================
@@ -56,6 +56,8 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <AchievementPopups />
+
       <Routes>
 
         {/* ==================================================
@@ -103,7 +105,7 @@ export default function App() {
           path="/courses"
           element={
             <ProtectedRoute>
-              <CoursesMarketing />
+              <Courses />
             </ProtectedRoute>
           }
         />

@@ -3,6 +3,8 @@ const express = require("express");
 const {
   getTemplates,
   createTemplate,
+  updateTemplate,
+  deleteTemplate,
   getSettings,
   upsertSettings,
   getProjects,
@@ -10,6 +12,9 @@ const {
   updateProject,
   deleteProject,
 } = require("../controllers/turtleStudioController");
+
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner, requireAdmin } = require("../src/middlewares/access.middleware");
 
 const router = express.Router();
 
@@ -19,7 +24,26 @@ const router = express.Router();
 
 router.get("/templates", getTemplates);
 
-router.post("/templates", createTemplate);
+router.post(
+  "/templates",
+  auth,
+  requireAdmin,
+  createTemplate
+);
+
+router.put(
+  "/templates/:templateId",
+  auth,
+  requireAdmin,
+  updateTemplate
+);
+
+router.delete(
+  "/templates/:templateId",
+  auth,
+  requireAdmin,
+  deleteTemplate
+);
 
 // =====================================================
 // SETTINGS
@@ -27,20 +51,42 @@ router.post("/templates", createTemplate);
 
 router.get("/settings", getSettings);
 
-router.put("/settings", upsertSettings);
+router.put(
+  "/settings",
+  auth,
+  requireAdmin,
+  upsertSettings
+);
 
 // =====================================================
 // PROJECTS
 // =====================================================
 
-router.get("/projects", getProjects);
+router.get(
+  "/projects",
+  auth,
+  requireOwner,
+  getProjects
+);
 
-router.post("/projects", saveProject);
+router.post(
+  "/projects",
+  auth,
+  requireOwner,
+  saveProject
+);
 
-router.put("/projects/:projectId", updateProject);
+router.put(
+  "/projects/:projectId",
+  auth,
+  requireOwner,
+  updateProject
+);
 
 router.delete(
   "/projects/:projectId",
+  auth,
+  requireOwner,
   deleteProject
 );
 

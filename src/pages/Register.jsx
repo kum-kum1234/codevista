@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, User, ChevronLeft } from "lucide-react";
+import { Mail, Lock, User, Phone, ChevronLeft } from "lucide-react";
 
 import { FontLoader } from "../theme/playfulPalette";
+import { API_URL } from "../config";
+import { validatePassword } from "../utils/auth";
 
 const LOGIN_GRADIENT =
   "linear-gradient(135deg, #8B5CF6, #1AACDB)";
@@ -13,6 +15,7 @@ export default function Register() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -41,6 +44,7 @@ export default function Register() {
 
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
+    const phone = form.phone.trim();
     const password = form.password;
     const confirmPassword = form.confirmPassword;
 
@@ -58,10 +62,15 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 6) {
-      setError(
-        "Password must be at least 6 characters."
-      );
+    if (!/^[6-9][0-9]{9}$/.test(phone)) {
+      setError("Enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -77,7 +86,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
 
         headers: {
@@ -87,6 +96,7 @@ export default function Register() {
         body: JSON.stringify({
           name,
           email,
+          phone,
           password,
           confirmPassword,
         }),
@@ -380,6 +390,40 @@ export default function Register() {
 
               </div>
 
+              {/* PHONE */}
+
+              <div>
+
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500">
+                  Phone number
+                </label>
+
+                <div className="relative">
+
+                  <Phone
+                    size={17}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    type="tel"
+                    required
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="10-digit mobile number"
+                    value={form.phone}
+                    onChange={update("phone")}
+                    className="w-full rounded-xl border-2 border-slate-200 px-10 py-3 outline-none focus:ring-2"
+                    style={{
+                      "--tw-ring-color":
+                        "rgba(139,92,246,0.3)",
+                    }}
+                  />
+
+                </div>
+
+              </div>
+
               {/* PASSWORD */}
 
               <div>
@@ -398,8 +442,8 @@ export default function Register() {
                   <input
                     type="password"
                     required
-                    minLength={6}
-                    placeholder="At least 6 characters"
+                    minLength={8}
+                    placeholder="8+ characters, letters and numbers"
                     value={form.password}
                     onChange={update("password")}
                     className="w-full rounded-xl border-2 border-slate-200 px-10 py-3 outline-none focus:ring-2"
@@ -431,7 +475,7 @@ export default function Register() {
                   <input
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     placeholder="Confirm your password"
                     value={form.confirmPassword}
                     onChange={update(

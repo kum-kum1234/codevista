@@ -5,8 +5,11 @@ const {
 } = require("../models/Achievement");
 
 const {
-  sendNotificationToUser,
-} = require("../services/notificationService");
+  ensureDefaultAchievements,
+  evaluateAchievements,
+  syncCommunityUser,
+  trackActivity,
+} = require("../services/activityService");
 
 // =====================================================
 // HELPER
@@ -42,6 +45,8 @@ function getMetricValue(stats, criteriaType) {
 
 const getAchievements = async (req, res) => {
   try {
+    await ensureDefaultAchievements();
+
     const achievements =
       await Achievement.find({
         active: true,
@@ -404,124 +409,33 @@ const getUserAchievements = async (
         });
     }
 
-    const definitions =
-      await Achievement.find({
-        active: true,
-      }).sort({
-        sortOrder: 1,
-        createdAt: 1,
-      });
-
-    const unlockedRecords =
-      await UnlockedAchievement.find({
+    // Unlocks anything newly earned and notifies the user.
+    const result =
+      await evaluateAchievements(
         userId,
-      });
-
-    const unlockedIds =
-      new Set(
-        unlockedRecords.map(
-          (item) =>
-            item.achievementId
-        )
+        stats
       );
 
-    const result = [];
+    const badgeCount = result.filter(
+      (item) =>
+        item.type === "badge" &&
+        item.unlocked
+    ).length;
 
-    for (const achievement of definitions) {
-      const currentValue =
-        getMetricValue(
-          stats,
-          achievement.criteriaType
-        );
-
-      const unlocked =
-        currentValue >=
-        achievement.criteriaValue;
-
-      // =====================================================
-      // NEW UNLOCK
-      // =====================================================
-
-      if (
-        unlocked &&
-        !unlockedIds.has(
-          achievement.achievementId
-        )
-      ) {
-        try {
-          // Create unlock record
-          await UnlockedAchievement.create({
-            userId,
-            achievementId:
-              achievement.achievementId,
-          });
-
-          // =====================================================
-          // SEND NOTIFICATION
-          // =====================================================
-
-          try {
-            const notificationTitle =
-              achievement.type === "badge"
-                ? "Badge Earned"
-                : "Achievement Unlocked";
-
-            const notificationMessage =
-              achievement.type === "badge"
-                ? `${achievement.title} badge has been earned!`
-                : `${achievement.title} has been unlocked!`;
-
-            await sendNotificationToUser({
-              userId,
-              type: "achievement",
-              title: notificationTitle,
-              message:
-                notificationMessage,
-              link: "/achievements",
-              data: {
-                achievementId:
-                  achievement.achievementId,
-                achievementType:
-                  achievement.type,
-              },
-            });
-
-            console.log(
-              `Achievement notification sent: ${achievement.title}`
-            );
-          } catch (notificationError) {
-            console.error(
-              "Achievement notification error:",
-              notificationError.message
-            );
-          }
-        } catch (unlockError) {
-          // Duplicate unlock records are ignored
-          if (
-            unlockError?.code !== 11000
-          ) {
-            console.error(
-              "Create unlocked achievement error:",
-              unlockError.message
-            );
-          }
-        }
-
-        unlockedIds.add(
-          achievement.achievementId
-        );
-      }
-
-      result.push({
-        ...achievement.toObject(),
-        currentValue,
-        unlocked:
-          unlocked ||
-          unlockedIds.has(
-            achievement.achievementId
-          ),
-      });
-    }
+    syncCommunityUser(
+      userId,
+      stats,
+      badgeCount,
+      0,
+      result.filter(
+        (item) => item.unlocked
+      ).length
+    ).catch((error) =>
+      console.error(
+        "Community sync error:",
+        error.message
+      )
+    );
 
     const achievements =
       result.filter(
@@ -637,6 +551,38 @@ const getUnlockedAchievements =
   };
 
 // =====================================================
+// RECORD CLIENT-SIDE ACTIVITY
+// Python runs in the browser, so the client reports it.
+// Only counters that cannot be derived server-side are accepted.
+// =====================================================
+
+const REPORTABLE = ["codeRuns"];
+
+const recordActivity = async (req, res) => {
+  const { userId, type } = req.body;
+
+  if (!REPORTABLE.includes(type)) {
+    return res.status(400).json({
+      success: false,
+      message: `type must be one of: ${REPORTABLE.join(", ")}`,
+    });
+  }
+
+  const stats = await trackActivity(userId, {
+    inc: { [type]: 1 },
+  });
+
+  if (!stats) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to record activity",
+    });
+  }
+
+  return res.status(200).json({ success: true });
+};
+
+// =====================================================
 // EXPORT
 // =====================================================
 
@@ -647,5 +593,6 @@ module.exports = {
   getUserStats,
   updateUserStats,
   getUserAchievements,
+  recordActivity,
   getUnlockedAchievements,
 };

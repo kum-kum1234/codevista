@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Navigate, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import CourseDetailPage from "../components/CourseDetailPage";
-import { getCourse, getLessonsByCourse } from "../services/api";
+import {
+  getCourse,
+  getLessonsByCourse,
+  getCourseProgress,
+} from "../services/api";
+import { getCurrentUser } from "../utils/auth";
 
 export default function CoursePage() {
   const { courseId } = useParams();
@@ -9,6 +14,8 @@ export default function CoursePage() {
 
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const [completedLessonIds, setCompletedLessonIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -25,6 +32,26 @@ export default function CoursePage() {
 
         setCourse(courseResponse.course);
         setLessons(lessonsResponse.lessons);
+
+        // Progress is optional: the course still renders if it fails.
+        const user = getCurrentUser() || {};
+        const userId = user.id || user._id || user.userId || "";
+
+        if (userId) {
+          try {
+            const progressResponse = await getCourseProgress(
+              userId,
+              courseId
+            );
+
+            setProgress(progressResponse?.progress?.percent || 0);
+            setCompletedLessonIds(
+              progressResponse?.progress?.completedLessonIds || []
+            );
+          } catch (progressError) {
+            console.error("Failed to load progress:", progressError);
+          }
+        }
 
       } catch (err) {
         console.error("Failed to load course:", err);
@@ -50,23 +77,29 @@ export default function CoursePage() {
   }
 
   if (error || !course) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-sm font-semibold text-slate-700">
+          {error || "Course not found."}
+        </p>
+
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="rounded-lg px-4 py-2 text-xs font-semibold text-white"
+          style={{
+            background:
+              "linear-gradient(135deg, #8B5CF6, #1AACDB)",
+          }}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="relative">
       
-      {/* Back to Courses button */}
-      <div className="px-6 pt-4">
-        <button
-          onClick={() => navigate("/courses")}
-          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-purple-600"
-        >
-          <span className="text-lg">←</span>
-          Back to Courses
-        </button>
-      </div>
-
       <CourseDetailPage
         active="dashboard"
         courseId={courseId}
@@ -79,6 +112,8 @@ export default function CoursePage() {
         whatYoullLearn={course.whatYoullLearn}
         requirements={course.requirements}
         lessons={lessons}
+        progress={progress}
+        completedLessonIds={completedLessonIds}
       />
     </div>
   );

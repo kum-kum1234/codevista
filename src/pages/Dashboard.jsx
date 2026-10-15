@@ -11,8 +11,15 @@ import {
   Star,
   Clock,
 } from "lucide-react";
-import { getCurrentUser } from "../utils/auth";
-import { getCourses } from "../services/api";
+import { getCurrentUser, authFetch } from "../utils/auth";
+import { API_URL } from "../config";
+import { getCourses, getCourseStatuses } from "../services/api";
+
+const STATUS_STYLE = {
+  "Not Started": "bg-slate-100 text-slate-500",
+  "In Progress": "bg-amber-50 text-amber-600",
+  Completed: "bg-green-50 text-green-600",
+};
 import AppLayout from "../components/AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
 
@@ -112,7 +119,15 @@ export default function Dashboard() {
   // =========================
 
   const [courses, setCourses] = useState([]);
+  const [hidePhoneBar, setHidePhoneBar] = useState(() => {
+    try {
+      return localStorage.getItem("hidePhoneBar") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [courseStatuses, setCourseStatuses] = useState({});
   const [dashboardProgress, setDashboardProgress] = useState(null);
   const [loadingProgress, setLoadingProgress] = useState(true);
 
@@ -156,6 +171,23 @@ export default function Dashboard() {
   }, []);
 
   // =========================
+  // FETCH COURSE STATUSES
+  // =========================
+
+  useEffect(() => {
+    if (!userId) {
+      setCourseStatuses({});
+      return;
+    }
+
+    getCourseStatuses(userId)
+      .then((data) => setCourseStatuses(data.statuses || {}))
+      .catch((error) =>
+        console.error("Error fetching course statuses:", error)
+      );
+  }, [userId]);
+
+  // =========================
   // FETCH LEARNING PROGRESS
   // =========================
 
@@ -170,8 +202,8 @@ export default function Dashboard() {
       try {
         setLoadingProgress(true);
 
-        const response = await fetch(
-          `http://localhost:5000/api/progress/${userId}`
+        const response = await authFetch(
+          `${API_URL}/progress/${userId}`
         );
 
         if (!response.ok) {
@@ -261,6 +293,7 @@ export default function Dashboard() {
           SECURE ACCOUNT BAR
       ========================= */}
 
+      {!user.phone && !hidePhoneBar && (
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white px-6 py-2.5 border-b border-slate-200 text-xs">
         <span className="flex items-center gap-2 text-slate-500">
           🔒 Secure your account: add a phone number to enable OTP sign-in from any device.
@@ -268,17 +301,28 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate("/profile")}
             className="rounded-lg px-3 py-1.5 font-semibold text-white hover:opacity-90"
             style={{ background: DASH_GRADIENT }}
           >
             Add Phone
           </button>
 
-          <button className="text-slate-400 hover:text-slate-600">
+          <button
+            onClick={() => {
+              setHidePhoneBar(true);
+              try {
+                localStorage.setItem("hidePhoneBar", "1");
+              } catch {}
+            }}
+            aria-label="Dismiss"
+            className="text-slate-400 hover:text-slate-600"
+          >
             <X size={14} />
           </button>
         </div>
       </div>
+      )}
 
       {/* =========================
     WELCOME
@@ -507,8 +551,13 @@ print(f"{my_name} is {age} years old.")`}
                     </div>
 
                     {/* Course Status */}
-                    <span className="mt-2 inline-block rounded bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-500">
-                      Not Started
+                    <span
+                      className={`mt-2 inline-block rounded px-2 py-0.5 text-[9px] font-semibold ${
+                        STATUS_STYLE[courseStatuses[c.courseId]?.status] ||
+                        STATUS_STYLE["Not Started"]
+                      }`}
+                    >
+                      {courseStatuses[c.courseId]?.status || "Not Started"}
                     </span>
 
                     {/* Course Title */}

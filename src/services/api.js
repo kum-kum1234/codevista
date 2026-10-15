@@ -1,4 +1,6 @@
-const API_URL = "https://codevista-c33j.vercel.app/api";
+import { authFetch as fetch } from "../utils/auth";
+
+import { API_URL } from "../config";
 // =========================
 // COURSE APIs
 // =========================
@@ -52,13 +54,28 @@ export const getLessonsByCourse = async (courseId) => {
   return response.json();
 };
 
+// Summaries (no video/exercises) of every lesson, for building curriculum lists.
+export const getAllLessons = async () => {
+  const response = await fetch(`${API_URL}/lessons`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch lessons");
+  }
+
+  return response.json();
+};
+
 export const getLesson = async (lessonId) => {
   const response = await fetch(
     `${API_URL}/lessons/${lessonId}`
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch lesson");
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data.message || "Failed to fetch lesson");
+    error.status = response.status;
+    error.code = data.code;
+    throw error;
   }
 
   return response.json();
@@ -269,6 +286,24 @@ export const deleteTurtleProject = async (
 
   return response.json();
 };
+// Fire-and-forget: tells the backend a Python run succeeded (counts towards
+// achievements). Never throws, so it cannot break the editor.
+export const recordCodeRun = () => {
+  fetch(`${API_URL}/achievements/activity`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "codeRuns" }),
+  })
+    .then(requestAchievementCheck)
+    .catch(() => {});
+};
+
+// Asks the popup listener to look for newly unlocked achievements now
+// instead of waiting for its next poll.
+export const requestAchievementCheck = () => {
+  window.dispatchEvent(new Event("achievements:check"));
+};
+
 export const getUserAchievements = async (userId) => {
   const response = await fetch(
     `${API_URL}/achievements/user/${encodeURIComponent(userId)}`
@@ -1426,4 +1461,65 @@ export const getCoursePurchaseStatus = async (
   }
 
   return data;
+};
+
+// =====================================================
+// COURSE / LESSON PROGRESS
+// =====================================================
+
+export const completeLesson = async (userId, lessonId) => {
+  const response = await fetch(`${API_URL}/progress/lesson-complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, lessonId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save lesson progress");
+  }
+
+  requestAchievementCheck();
+
+  return response.json();
+};
+
+export const getCourseProgress = async (userId, courseId) => {
+  const response = await fetch(
+    `${API_URL}/progress/${encodeURIComponent(
+      userId
+    )}/course/${encodeURIComponent(courseId)}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch course progress");
+  }
+
+  return response.json();
+};
+
+// Status (Not Started / In Progress / Completed) of every course in one call.
+export const getCourseStatuses = async (userId) => {
+  const response = await fetch(
+    `${API_URL}/progress/${encodeURIComponent(userId)}/courses`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch course statuses");
+  }
+
+  return response.json();
+};
+
+export const startCourse = async (userId, courseId) => {
+  const response = await fetch(`${API_URL}/progress/course-start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, courseId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save course start");
+  }
+
+  return response.json();
 };

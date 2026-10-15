@@ -9,11 +9,19 @@ const {
     deleteLesson
 } = require("../controllers/lessonController");
 
+const auth = require("../src/middlewares/auth.middleware");
+const { requireAdmin } = require("../src/middlewares/access.middleware");
+
 const router = express.Router();
 
 
 // Create lesson
-router.post("/", createLesson);
+router.post(
+  "/",
+  auth,
+  requireAdmin,
+  createLesson
+);
 
 
 // Get all lessons
@@ -24,16 +32,26 @@ router.get("/", getLessons);
 router.get("/course/:courseId", getLessonsByCourse);
 
 
-// Get one lesson
-router.get("/:lessonId", getLessonById);
+// Get one lesson (full content: needs login + access to the lesson)
+router.get("/:lessonId", auth, getLessonById);
 
 
 // Update lesson
-router.put("/:lessonId", updateLesson);
+router.put(
+  "/:lessonId",
+  auth,
+  requireAdmin,
+  updateLesson
+);
 
 
 // Delete lesson
-router.delete("/:lessonId", deleteLesson);
+router.delete(
+  "/:lessonId",
+  auth,
+  requireAdmin,
+  deleteLesson
+);
 
 
 module.exports = router;

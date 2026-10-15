@@ -132,12 +132,10 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
+    // email / accountType / provider are server-controlled (email must not be user-editable) (payment webhook, login)
     const allowedFields = [
       "name",
       "phone",
-      "email",
-      "provider",
-      "accountType",
     ];
 
     const updateData = {};
@@ -154,6 +152,13 @@ exports.updateProfile = async (req, res) => {
 
     if (req.body.phone !== undefined) {
       const phone = String(req.body.phone).trim();
+
+      if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+        return res.status(400).json({
+          success: false,
+          message: "Enter a valid 10-digit mobile number.",
+        });
+      }
 
       if (phone) {
         const existingProfile = await Profile.findOne({
@@ -184,11 +189,16 @@ exports.updateProfile = async (req, res) => {
       { $set: updateData },
       {
         new: true,
-        upsert: true,
         runValidators: true,
-        setDefaultsOnInsert: true,
       }
     );
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
 
     return res.json({
       success: true,
@@ -196,12 +206,20 @@ exports.updateProfile = async (req, res) => {
       profile: formatProfile(profile),
     });
   } catch (error) {
+    // Two simultaneous updates hit the unique phone index.
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        code: "PHONE_ALREADY_REGISTERED",
+        message: "Account already registered using this number.",
+      });
+    }
+
     console.error("Update profile error:", error);
 
     return res.status(500).json({
       success: false,
       message: "Failed to update profile",
-      error: error.message,
     });
   }
 };

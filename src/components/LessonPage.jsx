@@ -20,7 +20,13 @@ import {
 import AppLayout from "./AppLayout";
 import CodeRunner from "./CodeRunner";
 import { PALETTE } from "../theme/playfulPalette";
-import { getLesson } from "../services/api";
+import {
+  getLesson,
+  completeLesson,
+  getCourseProgress,
+  startCourse,
+} from "../services/api";
+import { getCurrentUser } from "../utils/auth";
 
 const DASH_GRADIENT =
   "linear-gradient(135deg, #8B5CF6, #1AACDB)";
@@ -30,7 +36,6 @@ const TABS = [
   { key: "learn", label: "Learn", icon: BookOpen },
   { key: "practice", label: "Practice", icon: Dumbbell },
   { key: "summary", label: "Summary", icon: ClipboardList },
-  { key: "complete", label: "Mark Complete", icon: CheckCircle2 },
 ];
 
 /* Convert YouTube watch URL into an embeddable URL */
@@ -232,6 +237,14 @@ export default function LessonPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [lessonDone, setLessonDone] = useState(false);
+  const [savingComplete, setSavingComplete] = useState(false);
+  const [completeError, setCompleteError] = useState("");
+
+  const currentUser = getCurrentUser() || {};
+  const progressUserId =
+    currentUser.id || currentUser._id || currentUser.userId || "";
+
   const labRef = useRef(null);
 
   const clr = PALETTE[4];
@@ -264,9 +277,32 @@ export default function LessonPage() {
             );
 
         setCompletedExercises(backendCompleted);
+
+        if (progressUserId && response.lesson?.courseId) {
+          // Access was granted, so the learner has started this course.
+          startCourse(progressUserId, response.lesson.courseId).catch(
+            (startError) =>
+              console.error("Failed to save course start:", startError)
+          );
+
+          try {
+            const progressResponse = await getCourseProgress(
+              progressUserId,
+              response.lesson.courseId
+            );
+
+            setLessonDone(
+              (progressResponse?.progress?.completedLessonIds || []).includes(
+                response.lesson.lessonId
+              )
+            );
+          } catch (progressError) {
+            console.error("Failed to load progress:", progressError);
+          }
+        }
       } catch (err) {
         console.error("Failed to load lesson:", err);
-        setError("Failed to load lesson.");
+        setError(err.message || "Failed to load lesson.");
       } finally {
         setLoading(false);
       }
@@ -309,6 +345,29 @@ export default function LessonPage() {
 
       return [...prev, activeExerciseId];
     });
+  }
+
+  /*
+   * Save this lesson as completed for the current user.
+   */
+  async function handleMarkLessonComplete() {
+    if (!progressUserId || !lesson?.lessonId || savingComplete) {
+      return;
+    }
+
+    try {
+      setSavingComplete(true);
+      setCompleteError("");
+
+      await completeLesson(progressUserId, lesson.lessonId);
+
+      setLessonDone(true);
+    } catch (err) {
+      console.error("Mark complete error:", err);
+      setCompleteError("Could not save your progress. Please try again.");
+    } finally {
+      setSavingComplete(false);
+    }
   }
 
   /*
@@ -589,6 +648,133 @@ export default function LessonPage() {
                   {lesson.video?.caption}
                 </div>
               </div>
+
+              {/* Practice exercises */}
+              <p
+                className="mt-5 mb-3 flex items-center gap-1.5 text-xs font-bold"
+                style={{ color: "#8B5CF6" }}
+              >
+                <Dumbbell size={13} />
+                Practice Exercises
+              </p>
+
+              <ExerciseList
+                exercises={lesson.exercises || []}
+                onOpenInLab={openInLab}
+                fallbackCode={lesson.codeLab?.initialCode || ""}
+                completedExercises={completedExercises}
+              />
+
+              {/* Exercise progress */}
+              {totalExercises > 0 && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="font-semibold text-slate-500">
+                      Exercise Progress
+                    </span>
+
+                    <span className="font-bold text-[#241B4E]">
+                      {completedCount} of {totalExercises} done
+                    </span>
+                  </div>
+
+                  <div className="h-1.5 w-full rounded-full bg-slate-100">
+                    <div
+                      className="h-1.5 rounded-full"
+                      style={{
+                        width: `${exerciseProgress}%`,
+                        background: DASH_GRADIENT,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!lessonDone && totalExercises - completedCount > 0 ? (
+                <div
+                  className="mt-3 rounded-xl border p-4"
+                  style={{
+                    borderColor: "#FDE68A",
+                    backgroundColor: "#FFFBEB",
+                  }}
+                >
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 mb-1">
+                    <AlertTriangle size={13} />
+                    Exercises not finished yet
+                  </p>
+
+                  <p className="text-[11px] text-amber-700 mb-3">
+                    You have {totalExercises - completedCount} exercises left.
+                    Head to the Practice tab to finish them, or skip and mark
+                    complete now — you can always come back.
+                  </p>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setActiveTab("practice")}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#241B4E] hover:bg-slate-50"
+                    >
+                      Go to exercises
+                    </button>
+
+                    <button
+                      onClick={handleMarkLessonComplete}
+                      disabled={savingComplete}
+                      className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white hover:opacity-90 disabled:opacity-60"
+                      style={{ background: DASH_GRADIENT }}
+                    >
+                      {savingComplete ? "Saving..." : "Skip & mark complete"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleMarkLessonComplete}
+                  disabled={lessonDone || savingComplete}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-bold text-white hover:opacity-90 disabled:cursor-default disabled:opacity-80"
+                  style={{
+                    background: lessonDone ? "#16A34A" : DASH_GRADIENT,
+                  }}
+                >
+                  <CheckCircle2 size={14} />
+                  {savingComplete
+                    ? "Saving..."
+                    : lessonDone
+                    ? "Lesson completed"
+                    : "Mark lesson as complete"}
+                </button>
+              )}
+
+              {completeError && (
+                <p className="mt-2 text-[11px] text-red-600">
+                  {completeError}
+                </p>
+              )}
+
+              {lesson.nextLesson?.title && (
+                <div
+                  className="mt-3 rounded-xl border p-4"
+                  style={{
+                    borderColor: "#E5D4FF",
+                    backgroundColor: "#F5EEFF",
+                  }}
+                >
+                  <p
+                    className="text-[10px] font-bold"
+                    style={{ color: "#8B5CF6" }}
+                  >
+                    COMING UP
+                  </p>
+
+                  <p className="text-xs font-semibold text-[#241B4E]">
+                    {lesson.nextLesson.title}
+                  </p>
+
+                  <p className="text-[10px] text-slate-500">
+                    {lesson.nextLesson.duration}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1013,157 +1199,6 @@ export default function LessonPage() {
                     </button>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* ---------------- Mark Complete tab ---------------- */}
-          {activeTab === "complete" && (
-            <div>
-              <p
-                className="flex items-center gap-1.5 text-xs font-bold mb-3"
-                style={{ color: "#8B5CF6" }}
-              >
-                <CheckCircle2 size={13} />
-                Mark Complete
-              </p>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-4 mb-3">
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="font-semibold text-slate-500">
-                    Exercise Progress
-                  </span>
-
-                  <span className="font-bold text-[#241B4E]">
-                    {completedCount} of{" "}
-                    {totalExercises} done
-                  </span>
-                </div>
-
-                <div className="h-1.5 w-full rounded-full bg-slate-100">
-                  <div
-                    className="h-1.5 rounded-full"
-                    style={{
-                      width: `${exerciseProgress}%`,
-                      background:
-                        DASH_GRADIENT,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div
-                className="rounded-xl border p-4 mb-4"
-                style={{
-                  borderColor: "#FDE68A",
-                  backgroundColor: "#FFFBEB",
-                }}
-              >
-                <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 mb-1">
-                  <AlertTriangle size={13} />
-                  Exercises not finished yet
-                </p>
-
-                <p className="text-[11px] text-amber-700 mb-3">
-                  You have{" "}
-                  {Math.max(
-                    0,
-                    totalExercises -
-                      completedCount
-                  )}{" "}
-                  exercises left. Head to the Practice tab to finish them, or skip and mark complete now — you can always come back.
-                </p>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      setActiveTab("practice")
-                    }
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#241B4E] hover:bg-slate-50"
-                  >
-                    Go back and try it
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      setActiveTab("summary")
-                    }
-                    className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white hover:opacity-90"
-                    style={{
-                      background:
-                        DASH_GRADIENT,
-                    }}
-                  >
-                    Skip & mark complete
-                  </button>
-                </div>
-              </div>
-
-              {/* Coming Up */}
-              {lesson.nextLesson?.title && (
-                <div
-                  className="rounded-xl border p-4 mb-3"
-                  style={{
-                    borderColor: "#E5D4FF",
-                    backgroundColor: "#F5EEFF",
-                  }}
-                >
-                  <p
-                    className="text-[10px] font-bold"
-                    style={{
-                      color: "#8B5CF6",
-                    }}
-                  >
-                    COMING UP
-                  </p>
-
-                  <p className="text-xs font-semibold text-[#241B4E]">
-                    {lesson.nextLesson.title}
-                  </p>
-
-                  <p className="text-[10px] text-slate-500">
-                    {lesson.nextLesson.duration}
-                  </p>
-                </div>
-              )}
-
-              {/* Python Playground */}
-              <div className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{
-                      backgroundColor:
-                        "#F5EEFF",
-                    }}
-                  >
-                    <Code2
-                      size={15}
-                      style={{
-                        color: "#8B5CF6",
-                      }}
-                    />
-                  </span>
-
-                  <div>
-                    <p className="text-xs font-bold text-[#241B4E]">
-                      Python Playground
-                    </p>
-
-                    <p className="text-[10px] text-slate-400">
-                      Experiment with more code examples
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    navigate("/playground")
-                  }
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <ExternalLink size={15} />
-                </button>
               </div>
             </div>
           )}

@@ -9,6 +9,7 @@ import AppLayout from "../components/AppLayout";
 import { useNavigate } from "react-router-dom";
 import { loadPyodideRuntime } from "../components/CodeRunner";
 import { getCurrentUser } from "../utils/auth";
+import { recordCodeRun } from "../services/api";
 
 import {
   getPlaygroundStarters,
@@ -433,6 +434,8 @@ export default function Playground() {
       await pyodide.runPythonAsync(
         code
       );
+
+      recordCodeRun();
     } catch (error) {
       captured +=
         (captured ? "\n" : "") +

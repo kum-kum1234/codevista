@@ -12,6 +12,7 @@ import {
   Heart,
   MessageSquare,
   Trash2,
+  CheckCircle,
 } from "lucide-react";
 import { getCurrentUser, initialsFromName } from "../utils/auth";
 import AppLayout from "../components/AppLayout";
@@ -156,6 +157,7 @@ export default function Community() {
 
   const [questionDraft, setQuestionDraft] = useState("");
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [showQuestionSuccess, setShowQuestionSuccess] = useState(false);
 
   const [filterCategoryOpen, setFilterCategoryOpen] = useState(false);
   const [selectedFilterCategory, setSelectedFilterCategory] = useState("");
@@ -176,8 +178,6 @@ export default function Community() {
     user?.email ||
     user?.phone ||
     "";
-   console.log("CURRENT USER:", user);
-   console.log("CURRENT USER ID:", userId);
   const userName =
     user?.name ||
     user?.username ||
@@ -248,22 +248,25 @@ export default function Community() {
     try {
       setLoadingCommunity(true);
 
-      const requests = [
+      // One failing request (e.g. stats) must not blank the whole page.
+      const results = await Promise.allSettled([
         getCommunitySettings(),
         getCommunityChallenges(),
         getCommunityLeaderboard(),
-      ];
+        userId ? getCommunityStats(userId) : Promise.resolve(null),
+      ]);
 
-      if (userId) {
-        requests.push(getCommunityStats(userId));
+      const valueOf = (result) =>
+        result.status === "fulfilled" ? result.value : null;
+
+      if (results.slice(0, 3).every((r) => r.status === "rejected")) {
+        throw results[0].reason;
       }
 
-      const results = await Promise.all(requests);
-
-      const settingsResponse = results[0];
-      const challengesResponse = results[1];
-      const leaderboardResponse = results[2];
-      const statsResponse = userId ? results[3] : null;
+      const settingsResponse = valueOf(results[0]);
+      const challengesResponse = valueOf(results[1]);
+      const leaderboardResponse = valueOf(results[2]);
+      const statsResponse = valueOf(results[3]);
 
       const settings = settingsResponse?.settings || {};
 
@@ -344,14 +347,15 @@ export default function Community() {
   }, [userId]);
 
   useEffect(() => {
-    if (!filterCategories.length) return;
+    // Wait for the settings so the first request uses the right category.
+    if (loadingCommunity) return;
 
     const timer = setTimeout(() => {
       loadPosts();
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [selectedFilterCategory, postSearch, filterCategories.length]);
+  }, [selectedFilterCategory, postSearch, loadingCommunity]);
 
   useEffect(() => {
     if (!userId) return;
@@ -533,14 +537,9 @@ export default function Community() {
 
       setQuestionDraft("");
       setShowQuestionModal(false);
+      setShowQuestionSuccess(true);
 
       await loadPosts();
-
-      showToast(
-        "success",
-        "Question submitted",
-        "Your question has been posted to Get Help."
-      );
     } catch (error) {
       console.error(
         "Create question error:",
@@ -973,7 +972,7 @@ export default function Community() {
                     <p className="text-[10px] text-slate-400">
                       @
                       {communityStats?.user?.username ||
-                        user.name
+                (user.name || userName)
                           .toLowerCase()
                           .replace(
                             /\s+/g,
@@ -984,11 +983,11 @@ export default function Community() {
                     <p className="mt-1 text-xs font-semibold text-yellow-500">
                       ⭐ Level{" "}
                       {
-                        communityStats?.user?.level
+                        communityStats?.user?.level ?? 1
                       }{" "}
                       ·{" "}
                       {
-                        communityStats?.user?.xp
+                        communityStats?.user?.xp ?? 0
                       }{" "}
                       XP
                     </p>
@@ -1016,7 +1015,7 @@ export default function Community() {
 
                     <p className="text-[9px] text-slate-400 mt-1">
                       {
-                        communityStats?.user?.xpToNextLevel
+                        communityStats?.user?.xpToNextLevel ?? 0
                       }{" "}
                       XP to next level
                     </p>
@@ -1040,7 +1039,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats?.user?.posts
+                            communityStats?.user?.posts ?? 0
                           }
                         </p>
 
@@ -1066,7 +1065,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats?.user?.streak
+                            communityStats?.user?.streak ?? 0
                           }
                         </p>
 
@@ -1081,7 +1080,7 @@ export default function Community() {
 
                         <p className="text-sm font-bold text-green-600">
                           {
-                            communityStats?.user?.lessons
+                            communityStats?.user?.lessons ?? 0
                           }
                         </p>
 
@@ -1108,7 +1107,7 @@ export default function Community() {
                           }}
                         >
                           {
-                            communityStats?.user?.badges
+                            communityStats?.user?.badges ?? 0
                           }
                         </p>
 
@@ -1228,7 +1227,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats?.community?.activeMembers
+                          communityStats?.community?.activeMembers ?? 0
                         }
                       </span>
 
@@ -1242,7 +1241,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats?.community?.postsThisWeek
+                          communityStats?.community?.postsThisWeek ?? 0
                         }
                       </span>
 
@@ -1256,7 +1255,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats?.community?.questionsAnswered
+                          communityStats?.community?.questionsAnswered ?? 0
                         }
                       </span>
 
@@ -1270,7 +1269,7 @@ export default function Community() {
 
                       <span className="font-bold text-[#241B4E]">
                         {
-                          communityStats?.community?.averageResponseTime
+                          communityStats?.community?.averageResponseTime ?? "—"
                         }
                       </span>
 
@@ -1305,7 +1304,11 @@ export default function Community() {
                             className={`text-[9px] mt-1 ${challenge.colorType === "green" ? "text-green-600" : ""}`}
                             style={challenge.colorType === "green" ? undefined : { color: "#8B5CF6" }}
                           >
-                            {challenge.daysLeft} days left
+                            {challenge.daysLeft > 1
+                              ? `${challenge.daysLeft} days left`
+                              : challenge.daysLeft === 1
+                              ? "1 day left"
+                              : "Ends today"}
                           </p>
                         </div>
                       ))
@@ -1885,6 +1888,37 @@ export default function Community() {
 
             </div>
 
+          </div>
+        )}
+
+        {/* Question submitted popup */}
+
+        {showQuestionSuccess && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+              <CheckCircle
+                size={44}
+                className="mx-auto"
+                style={{ color: "#10B981" }}
+              />
+
+              <p className="mt-3 text-base font-bold text-[#241B4E]">
+                Question submitted
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Your question has been posted to Get Help.
+              </p>
+
+              <button
+                onClick={() => setShowQuestionSuccess(false)}
+                autoFocus
+                className="mt-5 rounded-lg px-6 py-2 text-xs font-semibold text-white hover:opacity-90"
+                style={{ background: COMMUNITY_GRADIENT }}
+              >
+                OK
+              </button>
+            </div>
           </div>
         )}
 

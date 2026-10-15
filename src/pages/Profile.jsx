@@ -21,6 +21,7 @@ import {
 import { getCurrentUser, setCurrentUser, initialsFromName } from "../utils/auth";
 import {
   getProfile,
+  getUserAchievements,
   updateProfile,
   updateProfileNotifications,
   createStripeCheckoutSession,
@@ -71,6 +72,7 @@ export default function Profile() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
+  const [earnedBadges, setEarnedBadges] = useState([]);
 
   const userId =
     initialUser?.id ||
@@ -79,6 +81,25 @@ export default function Profile() {
     initialUser?.email ||
     initialUser?.phone ||
     "guest";
+
+  // Earned badges come from the achievements backend.
+  useEffect(() => {
+    let mounted = true;
+
+    getUserAchievements(userId)
+      .then((data) => {
+        if (mounted) {
+          setEarnedBadges((data?.badges || []).filter((badge) => badge.unlocked));
+        }
+      })
+      .catch(() => {
+        if (mounted) setEarnedBadges([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
 
   useEffect(() => {
     let mounted = true;
@@ -426,6 +447,29 @@ async function handleUpgradeToPremium() {
                 <Flame size={11} /> {streak} day{streak === 1 ? "" : "s"} streak
               </span>
             </div>
+
+            <div className="mb-3">
+              <p className="text-[10px] font-bold text-slate-500 mb-1.5">Badges</p>
+              {earnedBadges.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {earnedBadges.map((badge) => (
+                    <button
+                      key={badge.achievementId}
+                      type="button"
+                      onClick={() => navigate("/achievements")}
+                      title={badge.description}
+                      className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-[#8B5CF6] hover:bg-purple-50"
+                    >
+                      <Award size={11} /> {badge.title}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400">
+                  No badges earned yet — keep learning to earn your first one.
+                </p>
+              )}
+            </div>
             <button
   type="button"
   onClick={handleUpgradeToPremium}
@@ -465,7 +509,7 @@ async function handleUpgradeToPremium() {
           {activeTab === "account" && (
             <>
               {/* Complete profile banner */}
-              {!mobile && (
+              {!user.phone && (
               <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 mb-6">
                 <AlertTriangle size={16} className="text-yellow-500 shrink-0 mt-0.5" />
                 <div>
@@ -556,12 +600,20 @@ async function handleUpgradeToPremium() {
                   <div className="rounded-xl border border-slate-200 bg-white p-5">
                     <p className="flex items-center gap-2 font-bold text-[#241B4E]">
                       <Phone size={14} /> Mobile Number
-                      <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[9px] font-bold text-yellow-600">
-                        Missing
-                      </span>
+                      {user.phone ? (
+                        <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[9px] font-bold text-green-600">
+                          <Check size={10} /> Saved
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[9px] font-bold text-yellow-600">
+                          Missing
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-slate-400 mb-3">
-                      Verify your number to enable phone login. An SMS code will be sent.
+                      {user.phone
+                        ? "Your mobile number is saved on your account."
+                        : "Add your mobile number to secure your account."}
                     </p>
 
                     <label className="text-xs font-semibold text-slate-500">Mobile Number</label>
@@ -580,10 +632,23 @@ async function handleUpgradeToPremium() {
                     </div>
                     <button
                       onClick={handleSavePhone}
-                      disabled={!mobile || savingPhone}
-                      className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-400 disabled:opacity-60"
+                      disabled={
+                        !mobile.trim() ||
+                        mobile.trim() === (user.phone || "") ||
+                        savingPhone
+                      }
+                      className="rounded-lg px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                      style={
+                        !mobile.trim() || mobile.trim() === (user.phone || "") || savingPhone
+                          ? undefined
+                          : { background: PROFILE_GRADIENT }
+                      }
                     >
-                      {savingPhone ? "Saving..." : "Update Phone"}
+                      {savingPhone
+                        ? "Saving..."
+                        : user.phone
+                        ? "Update Phone"
+                        : "Save Phone"}
                     </button>
                   </div>
 

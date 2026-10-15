@@ -53,6 +53,8 @@ async function sendNotificationToUser({
   message,
   link = "",
   data = {},
+  // false = only store it; the app shows it as an in-page popup instead.
+  push = true,
 }) {
   // Find user's profile
   const profile = await Profile.findOne({
@@ -87,6 +89,15 @@ async function sendNotificationToUser({
     link,
     data,
   });
+
+  if (!push) {
+    return {
+      skipped: false,
+      notification,
+      sent: 0,
+      removed: 0,
+    };
+  }
 
   // Configure Web Push
   configureWebPush();

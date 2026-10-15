@@ -14,7 +14,8 @@ import {
   Layers,
 } from "lucide-react";
 
-import { setCurrentUser, nameFromEmail } from "../utils/auth";
+import { setCurrentUser, setAuthToken, validatePassword } from "../utils/auth";
+import { API_URL } from "../config";
 import { FontLoader, PALETTE } from "../theme/playfulPalette";
 
 const LOGIN_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
@@ -60,24 +61,8 @@ const UNREGISTERED_FEATURES = [
   },
 ];
 
-// Kept for the existing demo Google UI
-const MOCK_GOOGLE_ACCOUNTS = [
-  {
-    name: "Kumkum Goyal",
-    email: "kumkum.goyal@gmail.com",
-    color: "bg-purple-500",
-  },
-  {
-    name: "Aryan Sharma",
-    email: "aryan.sharma14@gmail.com",
-    color: "bg-blue-500",
-  },
-  {
-    name: "Priya Mehta",
-    email: "priya.mehta@gmail.com",
-    color: "bg-pink-500",
-  },
-];
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const GSI_SCRIPT_ID = "google-gsi-client";
 
 function GoogleIcon(props) {
   return (
@@ -115,8 +100,7 @@ export default function Login() {
 
   const [loading, setLoading] = useState(false);
   const [showGooglePicker, setShowGooglePicker] = useState(false);
-  const [addingAccount, setAddingAccount] = useState(false);
-  const [newAccountEmail, setNewAccountEmail] = useState("");
+  const googleBtnRef = useRef(null);
 
   // Phone flow:
   // enter -> unregistered -> otp
@@ -203,7 +187,7 @@ export default function Login() {
   setLoading(true);
 
   try {
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -231,6 +215,7 @@ export default function Login() {
     }
 
     setCurrentUser(data.user);
+    setAuthToken(data.token);
 
     navigate("/dashboard", {
       replace: true,
@@ -267,8 +252,10 @@ async function handleRegisterSubmit(e) {
     return;
   }
 
-  if (password.length < 6) {
-    alert("Password must be at least 6 characters.");
+  const passwordError = validatePassword(password);
+
+  if (passwordError) {
+    alert(passwordError);
     return;
   }
 
@@ -279,7 +266,7 @@ async function handleRegisterSubmit(e) {
     // CREATE ACCOUNT
     // -------------------------------------------------
 
-    const res = await fetch("/api/auth/register", {
+    const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -358,7 +345,7 @@ async function handleRegisterSubmit(e) {
 
   async function sendOtp() {
     try {
-      const res = await fetch("/api/auth/otp/send", {
+      const res = await fetch(`${API_URL}/auth/otp/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -498,7 +485,7 @@ async function handleRegisterSubmit(e) {
 
     try {
       const res = await fetch(
-        "/api/auth/otp/verify",
+        `${API_URL}/auth/otp/verify`,
         {
           method: "POST",
           headers: {
@@ -534,6 +521,7 @@ async function handleRegisterSubmit(e) {
 
       if (data.user) {
         setCurrentUser(data.user);
+        setAuthToken(data.token);
 
         navigate("/dashboard", {
           replace: true,
@@ -571,40 +559,93 @@ async function handleRegisterSubmit(e) {
   // =====================================================
   // GOOGLE LOGIN
   // =====================================================
-  // Existing demo Google flow preserved.
+  // Google returns a signed ID token; the backend verifies it and
+  // issues our own session token.
 
   function handleGoogleClick() {
     setShowGooglePicker(true);
   }
 
-  function selectGoogleAccount(account) {
+  async function handleGoogleCredential(response) {
+    if (!response?.credential) return;
+
     setLoading(true);
-    setShowGooglePicker(false);
 
-    setTimeout(() => {
-      setLoading(false);
-
-      setCurrentUser({
-        name: account.name,
-        email: account.email,
-        provider: "google",
-        accountType: "Free",
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: response.credential }),
       });
 
-      navigate("/welcome");
-    }, 500);
+      const data = await res.json();
+
+      if (!res.ok || !data.user || !data.token) {
+        throw new Error(
+          data.error || "Google sign-in failed. Please try again."
+        );
+      }
+
+      setCurrentUser(data.user);
+      setAuthToken(data.token);
+      setShowGooglePicker(false);
+
+      navigate(data.isNewUser ? "/welcome" : "/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      console.error("Google sign-in failed:", err);
+      alert(err.message || "Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleAddAccountSubmit(e) {
-    e.preventDefault();
+  // Load Google Identity Services and render its button when the modal opens.
+  useEffect(() => {
+    if (!showGooglePicker || !GOOGLE_CLIENT_ID) return;
 
-    if (!newAccountEmail) return;
+    let cancelled = false;
 
-    selectGoogleAccount({
-      name: nameFromEmail(newAccountEmail),
-      email: newAccountEmail,
-    });
-  }
+    function init() {
+      if (cancelled || !window.google?.accounts?.id || !googleBtnRef.current) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+      });
+
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        width: 280,
+      });
+    }
+
+    if (window.google?.accounts?.id) {
+      init();
+    } else {
+      let script = document.getElementById(GSI_SCRIPT_ID);
+
+      if (!script) {
+        script = document.createElement("script");
+        script.id = GSI_SCRIPT_ID;
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        document.head.appendChild(script);
+      }
+
+      script.addEventListener("load", init);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGooglePicker]);
 
   // =====================================================
   // LEFT PANEL CONTENT
@@ -1331,18 +1372,17 @@ async function handleRegisterSubmit(e) {
       </div>
 
       {/* =====================================================
-          GOOGLE ACCOUNT PICKER
+          GOOGLE SIGN-IN (Google Identity Services)
       ===================================================== */}
 
       {showGooglePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden">
-
             <div className="px-6 pt-6 pb-4 text-center">
               <GoogleIcon className="mx-auto" />
 
               <h3 className="mt-3 text-lg font-medium text-slate-800">
-                Choose an account
+                Sign in with Google
               </h3>
 
               <p className="mt-1 text-xs text-slate-500">
@@ -1350,147 +1390,32 @@ async function handleRegisterSubmit(e) {
               </p>
             </div>
 
-            {!addingAccount ? (
-              <>
-                <div className="border-t border-slate-100">
-
-                  {MOCK_GOOGLE_ACCOUNTS.map(
-                    (account) => (
-                      <button
-                        key={
-                          account.email
-                        }
-                        onClick={() =>
-                          selectGoogleAccount(
-                            account
-                          )
-                        }
-                        disabled={loading}
-                        className="w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${account.color} text-white text-sm font-semibold`}
-                        >
-                          {
-                            account.name[0]
-                          }
-                        </span>
-
-                        <span className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">
-                            {
-                              account.name
-                            }
-                          </p>
-
-                          <p className="text-xs text-slate-500 truncate">
-                            {
-                              account.email
-                            }
-                          </p>
-                        </span>
-                      </button>
-                    )
+            <div className="px-6 pb-4 flex flex-col items-center gap-3 min-h-[60px]">
+              {!GOOGLE_CLIENT_ID ? (
+                <p className="text-sm text-red-600 text-center">
+                  Google sign-in is not configured.
+                </p>
+              ) : (
+                <>
+                  <div ref={googleBtnRef} />
+                  {loading && (
+                    <p className="text-xs text-slate-500">
+                      Signing you in...
+                    </p>
                   )}
+                </>
+              )}
+            </div>
 
-                  <button
-                    onClick={() =>
-                      setAddingAccount(
-                        true
-                      )
-                    }
-                    className="w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-slate-50 border-t border-slate-100"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 text-slate-500">
-                      <User size={16} />
-                    </span>
-
-                    <span className="text-sm font-medium text-slate-800">
-                      Use another account
-                    </span>
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
-                  <button
-                    onClick={() =>
-                      setShowGooglePicker(
-                        false
-                      )
-                    }
-                    className="text-sm font-medium"
-                    style={{
-                      color: "#8B5CF6",
-                    }}
-                  >
-                    Cancel
-                  </button>
-
-                  <p className="text-[10px] text-slate-400">
-                    This is a demo picker
-                  </p>
-                </div>
-              </>
-            ) : (
-              <form
-                onSubmit={
-                  handleAddAccountSubmit
-                }
-                className="px-6 pb-6"
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
+              <button
+                onClick={() => setShowGooglePicker(false)}
+                className="text-sm font-medium"
+                style={{ color: "#8B5CF6" }}
               >
-                <input
-                  type="email"
-                  required
-                  autoFocus
-                  placeholder="Enter your email"
-                  value={newAccountEmail}
-                  onChange={(e) =>
-                    setNewAccountEmail(
-                      e.target.value
-                    )
-                  }
-                  className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-sm outline-none focus:ring-2"
-                  style={{
-                    "--tw-ring-color":
-                      "rgba(139,92,246,0.3)",
-                  }}
-                />
-
-                <div className="mt-4 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddingAccount(
-                        false
-                      );
-                      setNewAccountEmail(
-                        ""
-                      );
-                    }}
-                    className="text-sm font-medium"
-                    style={{
-                      color: "#8B5CF6",
-                    }}
-                  >
-                    Back
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-                    style={{
-                      background:
-                        LOGIN_GRADIENT,
-                    }}
-                  >
-                    {loading
-                      ? "Please wait..."
-                      : "Next"}
-                  </button>
-                </div>
-              </form>
-            )}
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

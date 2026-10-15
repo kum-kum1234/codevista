@@ -2,6 +2,9 @@ const express = require("express");
 
 const controller = require("../controllers/pythonHelpController");
 
+const auth = require("../src/middlewares/auth.middleware");
+const { requireAdmin } = require("../src/middlewares/access.middleware");
+
 const router = express.Router();
 
 
@@ -26,6 +29,8 @@ router.get(
 
 router.put(
   "/content",
+  auth,
+  requireAdmin,
   controller.upsertPythonHelpContent
 );
 
@@ -46,16 +51,22 @@ router.get(
 
 router.post(
   "/topics",
+  auth,
+  requireAdmin,
   controller.createPythonHelpTopic
 );
 
 router.put(
   "/topics/:topicId",
+  auth,
+  requireAdmin,
   controller.updatePythonHelpTopic
 );
 
 router.delete(
   "/topics/:topicId",
+  auth,
+  requireAdmin,
   controller.deletePythonHelpTopic
 );
 

@@ -98,7 +98,13 @@ export default function Timetable() {
 
   const user = getCurrentUser();
 
-  const userId = user?.email || user?.phone || "";
+  const userId =
+    user?.id ||
+    user?._id ||
+    user?.userId ||
+    user?.email ||
+    user?.phone ||
+    "";
 
   const days = state.showWeekend
     ? DAYS

@@ -16,8 +16,7 @@ module.exports = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Backend failed to start",
-            error: error.message
+            message: "Backend failed to start"
         });
     }
 };

@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:5000/api";
+import { authFetch } from "./auth";
+import { API_URL } from "../config";
 
 
 // ========================================
@@ -129,7 +130,7 @@ export async function enableBrowserNotifications(
 
 
   // Save subscription in MongoDB
-  const response = await fetch(
+  const response = await authFetch(
     `${API_URL}/notifications/subscribe`,
     {
       method: "POST",
@@ -200,7 +201,7 @@ export async function disableBrowserNotifications(
 
 
   // Tell backend to disable subscription
-  await fetch(
+  await authFetch(
     `${API_URL}/notifications/unsubscribe`,
     {
       method: "POST",

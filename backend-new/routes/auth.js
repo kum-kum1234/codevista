@@ -3,16 +3,40 @@ const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
+const { OAuth2Client } = require("google-auth-library");
+
 const Profile = require("../models/Profile");
+const Otp = require("../models/Otp");
+const authMiddleware = require("../src/middlewares/auth.middleware");
+const { sendOtpSms } = require("../services/smsService");
+const { signAccessToken } = require("../utils/token");
+const {
+  authLimiter,
+  otpLimiter,
+} = require("../src/middlewares/rateLimit.middleware");
 
 const router = express.Router();
+
+router.use(["/register", "/login"], authLimiter);
+router.use("/otp", otpLimiter);
 
 // =====================================================
 // OTP STORAGE
 // =====================================================
 
-// phone -> { code, expiresAt }
-const otpStore = new Map();
+// OTPs live in MongoDB (models/Otp.js), not in process memory, so they
+// work across serverless instances.
+
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_TTL_MS = 5 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+
+function hashOtp(phone, code) {
+  return crypto
+    .createHmac("sha256", process.env.JWT_SECRET || "")
+    .update(`${phone}:${code}`)
+    .digest("hex");
+}
 
 // =====================================================
 // HELPERS
@@ -23,11 +47,40 @@ function isValidIndianPhone(phone) {
 }
 
 function generateOtp() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function generateUserId() {
   return crypto.randomUUID();
+}
+
+// bcrypt only uses the first 72 bytes, so longer passwords are rejected.
+function validatePassword(password) {
+  if (typeof password !== "string") {
+    return "Password is required.";
+  }
+
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (Buffer.byteLength(password) > 72) {
+    return "Password is too long (max 72 characters).";
+  }
+
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return "Password must contain at least one letter and one number.";
+  }
+
+  return null;
+}
+
+// Valid bcrypt hash of a throwaway string, used to equalise login timing.
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$yUZkNAKDmxb2LYTWofOpN.Rmta7P9sd14hi/15Qvy4zzSOxuwtDZK";
+
+function isDuplicateKeyError(error) {
+  return error?.code === 11000;
 }
 
 function isValidEmail(email) {
@@ -45,7 +98,7 @@ function isValidEmail(email) {
 
 router.post("/register", async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, phone } = req.body;
 
     // -------------------------------------------------
     // VALIDATE INPUT
@@ -70,13 +123,25 @@ router.post("/register", async (req, res) => {
     }
 
     // -------------------------------------------------
+    // VALIDATE PHONE
+    // -------------------------------------------------
+
+    const normalizedPhone = String(phone || "").trim();
+
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return res.status(400).json({
+        error: "Enter a valid 10-digit mobile number.",
+      });
+    }
+
+    // -------------------------------------------------
     // VALIDATE PASSWORD
     // -------------------------------------------------
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters.",
-      });
+    const passwordError = validatePassword(password);
+
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     // -------------------------------------------------
@@ -90,6 +155,17 @@ router.post("/register", async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         error: "An account with this email already exists.",
+      });
+    }
+
+    const phoneTaken = await Profile.findOne({
+      phone: normalizedPhone,
+      active: true,
+    });
+
+    if (phoneTaken) {
+      return res.status(409).json({
+        error: "An account with this phone number already exists.",
       });
     }
 
@@ -125,25 +201,40 @@ router.post("/register", async (req, res) => {
     // CREATE USER
     // -------------------------------------------------
 
-    const profile = await Profile.create({
-      userId: generateUserId(),
+    let profile;
 
-      name: finalName,
+    try {
+      profile = await Profile.create({
+        userId: generateUserId(),
 
-      email: normalizedEmail,
+        name: finalName,
 
-      phone: "",
+        email: normalizedEmail,
 
-      provider: "email",
+        phone: normalizedPhone,
 
-      passwordHash,
+        provider: "email",
 
-      accountType: "Free",
+        passwordHash,
 
-      premiumCourses: [],
+        accountType: "Free",
 
-      active: true,
-    });
+        premiumCourses: [],
+
+        active: true,
+      });
+    } catch (createError) {
+      // Two simultaneous sign-ups hit the unique index.
+      if (isDuplicateKeyError(createError)) {
+        const field = createError.keyPattern?.phone ? "phone number" : "email";
+
+        return res.status(409).json({
+          error: `An account with this ${field} already exists.`,
+        });
+      }
+
+      throw createError;
+    }
 
     console.log(
       `✅ New account created: ${normalizedEmail}`
@@ -157,6 +248,8 @@ router.post("/register", async (req, res) => {
       status: "success",
 
       message: "Account created successfully.",
+
+      token: signAccessToken(profile.userId, profile.tokenVersion),
 
       user: {
         userId: profile.userId,
@@ -240,6 +333,10 @@ router.post("/login", async (req, res) => {
     // -------------------------------------------------
 
     if (!profile) {
+      // Spend the same time as a real check so timing doesn't reveal
+      // whether the email exists.
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+
       console.log(
         `❌ Login failed. User not found: ${normalizedEmail}`
       );
@@ -250,27 +347,20 @@ router.post("/login", async (req, res) => {
     }
 
     // -------------------------------------------------
-    // CHECK ACCOUNT STATUS
-    // -------------------------------------------------
-
-    if (profile.active === false) {
-      return res.status(403).json({
-        error: "This account has been disabled.",
-      });
-    }
-
-    // -------------------------------------------------
     // CHECK PASSWORD HASH
     // -------------------------------------------------
+    // Same generic answer as "wrong password" so the response doesn't
+    // reveal which sign-in method an account uses.
 
     if (!profile.passwordHash) {
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+
       console.log(
         `❌ No password hash found for: ${normalizedEmail}`
       );
 
       return res.status(401).json({
-        error:
-          "This account does not have a password. Please use phone login or register again.",
+        error: "Invalid email or password.",
       });
     }
 
@@ -299,6 +389,16 @@ router.post("/login", async (req, res) => {
     }
 
     // -------------------------------------------------
+    // CHECK ACCOUNT STATUS (only after the password is proven)
+    // -------------------------------------------------
+
+    if (profile.active === false) {
+      return res.status(403).json({
+        error: "This account has been disabled.",
+      });
+    }
+
+    // -------------------------------------------------
     // LOGIN SUCCESSFUL
     // -------------------------------------------------
 
@@ -310,6 +410,8 @@ router.post("/login", async (req, res) => {
       status: "success",
 
       message: "Login successful.",
+
+      token: signAccessToken(profile.userId, profile.tokenVersion),
 
       user: {
         userId: profile.userId,
@@ -336,6 +438,117 @@ router.post("/login", async (req, res) => {
     return res.status(500).json({
       error:
         "Login failed. Please try again.",
+    });
+  }
+});
+
+// =====================================================
+// GOOGLE SIGN-IN
+// =====================================================
+// The browser sends the ID token Google issued. We verify its
+// signature, audience and expiry with Google's public keys, and
+// only trust the email if Google says it is verified.
+// =====================================================
+
+let googleClient;
+
+router.post("/google", async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error("GOOGLE_CLIENT_ID is not configured");
+
+      return res.status(503).json({
+        error: "Google sign-in is not available right now.",
+      });
+    }
+
+    if (!idToken || typeof idToken !== "string") {
+      return res.status(400).json({
+        error: "Google ID token is required.",
+      });
+    }
+
+    googleClient =
+      googleClient || new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+    let payload;
+
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      payload = ticket.getPayload();
+    } catch (verifyError) {
+      return res.status(401).json({
+        error: "Google sign-in could not be verified.",
+      });
+    }
+
+    if (!payload?.email || payload.email_verified !== true) {
+      return res.status(401).json({
+        error: "Your Google email address is not verified.",
+      });
+    }
+
+    const email = payload.email.trim().toLowerCase();
+
+    let profile = await Profile.findOne({ email });
+    let isNewUser = false;
+
+    if (!profile) {
+      isNewUser = true;
+
+      try {
+        profile = await Profile.create({
+          userId: generateUserId(),
+          name: payload.name?.trim() || email.split("@")[0],
+          email,
+          provider: "google",
+          accountType: "Free",
+          premiumCourses: [],
+          active: true,
+        });
+      } catch (createError) {
+        // A parallel request created it first - just use that one.
+        if (!isDuplicateKeyError(createError)) throw createError;
+
+        isNewUser = false;
+        profile = await Profile.findOne({ email });
+
+        if (!profile) throw createError;
+      }
+    }
+
+    if (profile.active === false) {
+      return res.status(403).json({
+        error: "This account has been disabled.",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      isNewUser,
+      token: signAccessToken(profile.userId, profile.tokenVersion),
+      user: {
+        userId: profile.userId,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        provider: profile.provider,
+        accountType: profile.accountType,
+        premiumCourses: profile.premiumCourses || [],
+      },
+    });
+  } catch (error) {
+    console.error("========== GOOGLE LOGIN ERROR ==========");
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Google sign-in failed. Please try again.",
     });
   }
 });
@@ -369,39 +582,75 @@ router.post("/otp/send", async (req, res) => {
     }
 
     // -------------------------------------------------
+    // ONLY REGISTERED NUMBERS GET A WORKING CODE
+    // -------------------------------------------------
+    // The response is identical for unknown and disabled numbers so
+    // this endpoint can't be used to find out who has an account.
+
+    const existing = await Profile.findOne({
+      phone: normalizedPhone,
+    }).select("active");
+
+    const canReceiveCode = Boolean(existing) && existing.active !== false;
+
+    // -------------------------------------------------
     // GENERATE OTP
     // -------------------------------------------------
 
     const code = generateOtp();
 
-    const expiresAt =
-      Date.now() + 5 * 60 * 1000;
-
     // -------------------------------------------------
-    // STORE OTP
+    // RESEND COOLDOWN
     // -------------------------------------------------
 
-    otpStore.set(normalizedPhone, {
-      code,
-      expiresAt,
-    });
+    const previous = await Otp.findOne({
+      phone: normalizedPhone,
+    }).select("updatedAt");
+
+    if (
+      previous &&
+      Date.now() - previous.updatedAt.getTime() < OTP_RESEND_COOLDOWN_MS
+    ) {
+      return res.status(429).json({
+        error: "Please wait a little before requesting another code.",
+      });
+    }
 
     // -------------------------------------------------
-    // DEVELOPMENT / TESTING
+    // STORE OTP (hashed, replaces any earlier code)
     // -------------------------------------------------
 
-    console.log(
-      `📱 OTP for ${normalizedPhone}: ${code}`
+    await Otp.findOneAndUpdate(
+      { phone: normalizedPhone },
+      {
+        codeHash: hashOtp(normalizedPhone, code),
+        attempts: 0,
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      },
+      { upsert: true, setDefaultsOnInsert: true }
     );
 
     // -------------------------------------------------
-    // RETURN OTP TO WEBSITE
+    // SEND SMS (code is never returned in the response)
     // -------------------------------------------------
+
+    try {
+      if (canReceiveCode) {
+        await sendOtpSms(normalizedPhone, code);
+      }
+    } catch (smsError) {
+      console.error("OTP SMS failed:", smsError.message);
+
+      await Otp.deleteOne({ phone: normalizedPhone });
+
+      return res.status(502).json({
+        error: "Could not send the code. Please try again later.",
+      });
+    }
 
     return res.status(200).json({
       status: "sent",
-      message: "OTP generated successfully.",
-      otp: code,
+      message: "OTP sent successfully.",
     });
 
   } catch (error) {
@@ -469,8 +718,13 @@ router.post("/otp/verify", async (req, res) => {
     // GET OTP
     // -------------------------------------------------
 
-    const record =
-      otpStore.get(normalizedPhone);
+    // Count this attempt atomically before checking the code, so parallel
+    // guesses cannot exceed the attempt limit.
+    const record = await Otp.findOneAndUpdate(
+      { phone: normalizedPhone },
+      { $inc: { attempts: 1 } },
+      { returnDocument: "after" }
+    );
 
     if (!record) {
       return res.status(400).json({
@@ -483,8 +737,8 @@ router.post("/otp/verify", async (req, res) => {
     // CHECK EXPIRATION
     // -------------------------------------------------
 
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(normalizedPhone);
+    if (Date.now() > record.expiresAt.getTime()) {
+      await Otp.deleteOne({ _id: record._id });
 
       return res.status(400).json({
         error:
@@ -492,133 +746,102 @@ router.post("/otp/verify", async (req, res) => {
       });
     }
 
+    if (record.attempts > OTP_MAX_ATTEMPTS) {
+      await Otp.deleteOne({ _id: record._id });
+
+      return res.status(400).json({
+        error: "Too many incorrect attempts. Please request a new code.",
+      });
+    }
+
     // -------------------------------------------------
     // CHECK OTP
     // -------------------------------------------------
 
-    if (record.code !== normalizedCode) {
+    const expected = Buffer.from(record.codeHash);
+    const actual = Buffer.from(hashOtp(normalizedPhone, normalizedCode));
+
+    if (
+      expected.length !== actual.length ||
+      !crypto.timingSafeEqual(expected, actual)
+    ) {
       return res.status(400).json({
         error: "Incorrect code.",
       });
     }
 
-    // OTP is valid.
-    otpStore.delete(normalizedPhone);
+    // OTP is valid. Delete it atomically so it can only be used once.
+    const consumed = await Otp.findOneAndDelete({ _id: record._id });
+
+    if (!consumed) {
+      return res.status(400).json({
+        error: "This code has already been used.",
+      });
+    }
 
     // -------------------------------------------------
-    // FIND EXISTING PHONE USER
+    // FIND EXISTING PHONE USER (no account is created here)
     // -------------------------------------------------
 
-    let profile =
+    const profile =
       await Profile.findOne({
         phone: normalizedPhone,
       });
 
-    // -------------------------------------------------
-    // CREATE USER IF NOT FOUND
-    // -------------------------------------------------
-
-    if (!profile) {
-      let normalizedEmail = "";
-
-      if (email?.trim()) {
-        normalizedEmail =
-          email.trim().toLowerCase();
-
-        if (
-          !isValidEmail(normalizedEmail)
-        ) {
-          return res.status(400).json({
-            error:
-              "Enter a valid email address.",
-          });
-        }
-      }
-
-      profile =
-        await Profile.create({
-          userId: generateUserId(),
-
-          name:
-            name?.trim() || "Guest",
-
-          email: normalizedEmail,
-
-          phone: normalizedPhone,
-
-          provider: "phone",
-
-          passwordHash: "",
-
-          accountType: "Free",
-
-          premiumCourses: [],
-
-          active: true,
-        });
-
-      console.log(
-        `✅ New phone user created: ${normalizedPhone}`
-      );
-    } else {
-      // -------------------------------------------------
-      // CHECK ACCOUNT STATUS
-      // -------------------------------------------------
-
-      if (profile.active === false) {
-        return res.status(403).json({
-          error:
-            "This account has been disabled.",
-        });
-      }
-
-      // -------------------------------------------------
-      // UPDATE OPTIONAL INFORMATION
-      // -------------------------------------------------
-
-      let changed = false;
-
-      if (
-        name?.trim() &&
-        (!profile.name ||
-          profile.name === "Guest")
-      ) {
-        profile.name =
-          name.trim();
-
-        changed = true;
-      }
-
-      if (
-        email?.trim() &&
-        !profile.email
-      ) {
-        const normalizedEmail =
-          email.trim().toLowerCase();
-
-        if (
-          !isValidEmail(normalizedEmail)
-        ) {
-          return res.status(400).json({
-            error:
-              "Enter a valid email address.",
-          });
-        }
-
-        profile.email =
-          normalizedEmail;
-
-        changed = true;
-      }
-
-      if (changed) {
-        await profile.save();
-      }
-
-      console.log(
-        `✅ Existing phone user logged in: ${normalizedPhone}`
-      );
+    // Unknown / disabled numbers never receive a code, so this is
+    // only a safety net - and it gives the same answer as a bad code.
+    if (!profile || profile.active === false) {
+      return res.status(400).json({
+        error: "Incorrect code.",
+      });
     }
+
+    // -------------------------------------------------
+    // UPDATE OPTIONAL INFORMATION
+    // -------------------------------------------------
+
+    let changed = false;
+
+    if (
+      name?.trim() &&
+      (!profile.name ||
+        profile.name === "Guest")
+    ) {
+      profile.name =
+        name.trim();
+
+      changed = true;
+    }
+
+    if (
+      email?.trim() &&
+      !profile.email
+    ) {
+      const normalizedEmail =
+        email.trim().toLowerCase();
+
+      if (
+        !isValidEmail(normalizedEmail)
+      ) {
+        return res.status(400).json({
+          error:
+            "Enter a valid email address.",
+        });
+      }
+
+      profile.email =
+        normalizedEmail;
+
+      changed = true;
+    }
+
+    if (changed) {
+      await profile.save();
+    }
+
+    console.log(
+      `✅ Existing phone user logged in: ${normalizedPhone}`
+    );
 
     // -------------------------------------------------
     // RETURN USER
@@ -629,6 +852,8 @@ router.post("/otp/verify", async (req, res) => {
 
       message:
         "OTP verified successfully.",
+
+      token: signAccessToken(profile.userId, profile.tokenVersion),
 
       user: {
         userId: profile.userId,
@@ -663,49 +888,26 @@ router.post("/otp/verify", async (req, res) => {
 // LOGOUT
 // =====================================================
 
-router.post("/logout", async (req, res) => {
+router.post("/logout", authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    console.log(
-      "================================="
-    );
-
-    console.log(
-      "Logout request received"
-    );
-
-    console.log(
-      "User ID:",
-      userId || "Not provided"
-    );
-
-    console.log(
-      "================================="
+    // Bumping tokenVersion invalidates every token issued so far
+    // (this device and any other), so a stolen token stops working too.
+    await Profile.updateOne(
+      { userId: req.user.id },
+      { $inc: { tokenVersion: 1 } }
     );
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Logout successful.",
+      message: "Logout successful.",
     });
   } catch (error) {
-    console.error(
-      "========== LOGOUT ERROR =========="
-    );
-
+    console.error("========== LOGOUT ERROR ==========");
     console.error(error);
-
-    console.error(
-      "================================="
-    );
 
     return res.status(500).json({
       success: false,
-
-      error:
-        "Logout failed. Please try again.",
+      error: "Logout failed. Please try again.",
     });
   }
 });

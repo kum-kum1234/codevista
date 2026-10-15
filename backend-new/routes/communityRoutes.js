@@ -15,6 +15,9 @@ const {
   createChallenge,
 } = require("../controllers/communityController");
 
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner, requireAdmin } = require("../src/middlewares/access.middleware");
+
 const router = express.Router();
 
 // =====================================================
@@ -23,10 +26,17 @@ const router = express.Router();
 
 router.get("/posts", getPosts);
 
-router.post("/posts", createPost);
+router.post(
+  "/posts",
+  auth,
+  requireOwner,
+  createPost
+);
 
 router.delete(
   "/posts/:postId",
+  auth,
+  requireOwner,
   deletePost
 );
 
@@ -41,6 +51,8 @@ router.get(
 
 router.post(
   "/questions",
+  auth,
+  requireOwner,
   createQuestion
 );
 
@@ -55,6 +67,8 @@ router.get(
 
 router.put(
   "/settings",
+  auth,
+  requireAdmin,
   upsertSettings
 );
 
@@ -64,11 +78,15 @@ router.put(
 
 router.get(
   "/stats/:userId",
+  auth,
+  requireOwner,
   getCommunityStats
 );
 
 router.put(
   "/users/:userId",
+  auth,
+  requireAdmin,
   updateCommunityUser
 );
 
@@ -92,6 +110,8 @@ router.get(
 
 router.post(
   "/challenges",
+  auth,
+  requireAdmin,
   createChallenge
 );
 

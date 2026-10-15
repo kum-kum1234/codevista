@@ -19,6 +19,8 @@ import {
   Users2,
   Folder,
   Download,
+  Save,
+  Check,
   GripVertical,
   X,
 } from "lucide-react";
@@ -134,6 +136,12 @@ export default function Notes() {
     useState(true);
 
   const [saving, setSaving] =
+    useState(false);
+
+  const [savingDraft, setSavingDraft] =
+    useState(false);
+
+  const [justSaved, setJustSaved] =
     useState(false);
 
   const [error, setError] =
@@ -735,6 +743,8 @@ export default function Notes() {
     try {
       setError("");
 
+      setSavingDraft(true);
+
       const response =
         await updateNote(
           userId,
@@ -757,6 +767,13 @@ export default function Notes() {
           )
         );
       }
+
+      setJustSaved(true);
+
+      setTimeout(
+        () => setJustSaved(false),
+        2000
+      );
     } catch (err) {
       console.error(
         "Update note error:",
@@ -766,6 +783,8 @@ export default function Notes() {
       setError(
         "Failed to save note."
       );
+    } finally {
+      setSavingDraft(false);
     }
   }
 
@@ -894,7 +913,7 @@ export default function Notes() {
                   null
                 );
               } else {
-                navigate("/");
+                navigate("/dashboard");
               }
             }}
             className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#241B4E]"
@@ -1592,6 +1611,26 @@ export default function Notes() {
 
 
                     <div className="flex shrink-0 items-center gap-1">
+
+                      <button
+                        onClick={commitDraft}
+                        disabled={savingDraft}
+                        title="Save note"
+                        className="mr-1 flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white disabled:opacity-60"
+                        style={{ background: GRADIENT }}
+                      >
+                        {justSaved ? (
+                          <Check size={14} />
+                        ) : (
+                          <Save size={14} />
+                        )}
+
+                        {savingDraft
+                          ? "Saving..."
+                          : justSaved
+                          ? "Saved"
+                          : "Save"}
+                      </button>
 
                       <button
                         onClick={() =>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
 
 import {
   LayoutDashboard,
@@ -22,6 +23,7 @@ import {
   getCurrentUser,
   clearCurrentUser,
   initialsFromName,
+  authFetch,
 } from "../utils/auth";
 
 const SIDEBAR_GRADIENT =
@@ -132,8 +134,8 @@ export default function Sidebar({
 
       if (currentUser?.userId) {
         try {
-          const response = await fetch(
-            "http://localhost:5000/api/auth/logout",
+          const response = await authFetch(
+            `${API_URL}/auth/logout`,
             {
               method: "POST",
               headers: {
@@ -349,7 +351,7 @@ export default function Sidebar({
             WEEKLY EVENTS
         ================================================== */}
 
-        {sidebarOpen && (
+        {/* {sidebarOpen && (
           <p className="px-4 pt-4 pb-1 text-[10px] font-bold tracking-wide text-slate-400">
             WEEKLY EVENTS
           </p>
@@ -391,7 +393,7 @@ export default function Sidebar({
               </span>
             )}
           </button>
-        </nav>
+        </nav> */}
 
         {/* ==================================================
             RESOURCES

@@ -256,6 +256,12 @@ const communityChallengeSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // When set, daysLeft is computed from this date and expired challenges are hidden.
+    endsAt: {
+      type: Date,
+      default: null,
+    },
+
     active: {
       type: Boolean,
       default: true,

@@ -99,16 +99,16 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // No default: a missing email/phone stays absent instead of "",
+    // so the partial unique indexes below only cover real values.
     email: {
       type: String,
-      default: "",
       trim: true,
       lowercase: true,
     },
 
     phone: {
       type: String,
-      default: "",
       trim: true,
     },
 
@@ -138,6 +138,18 @@ const profileSchema = new mongoose.Schema(
       type: String,
       default: null,
       select: false,
+    },
+
+    /* ===================================================
+       SESSION REVOCATION
+
+       Embedded in every user token. Logout increments it,
+       which invalidates all tokens issued before.
+       =================================================== */
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
 
     /* ===================================================
@@ -238,6 +250,29 @@ const profileSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "profiles",
+  }
+);
+
+/* =====================================================
+   UNIQUENESS (only for real, non-empty values)
+   ===================================================== */
+
+profileSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: "string", $gt: "" } },
+  }
+);
+
+profileSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      phone: { $type: "string", $gt: "" },
+      active: true,
+    },
   }
 );
 

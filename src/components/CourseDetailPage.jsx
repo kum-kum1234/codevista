@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Clock,
   BookOpen,
   Play,
-  Lock,
   Video,
   Code2,
+  ArrowLeft,
 } from "lucide-react";
 import AppLayout from "./AppLayout";
 import { PALETTE } from "../theme/playfulPalette";
-import { getCurrentUser } from "../utils/auth";
 /*import {
   createCourseCheckoutSession,
   getCoursePurchaseStatus,
@@ -38,101 +37,29 @@ export default function CourseDetailPage({
   whatYoullLearn = [],
   requirements = [],
   lessons = [],
+  progress = 0,
+  completedLessonIds = [],
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Go back to wherever the user came from (e.g. Dashboard); fall back to
+  // the dashboard when the page was opened directly.
+  const handleBack = () => {
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const safeProgress = Math.min(
+    100,
+    Math.max(0, Number(progress) || 0)
+  );
 
   const clr =
     PALETTE[LEVEL_COLOR_INDEX[level] ?? 4];
-
-  // =====================================================
-  // CURRENT USER
-  // =====================================================
-
-  const currentUser = getCurrentUser() || {};
-
-  const userId =
-    currentUser?.id ||
-    currentUser?._id ||
-    currentUser?.userId ||
-    currentUser?.email ||
-    currentUser?.phone ||
-    "";
-
-  // =====================================================
-  // COURSE ACCESS STATE
-  // =====================================================
-
-  const [courseAccess, setCourseAccess] =
-    useState(false);
-
-  const [accessType, setAccessType] =
-    useState("");
-
-  /*const [coursePaymentLoading, setCoursePaymentLoading] =
-    useState(false);
-*/
-  const [accessLoading, setAccessLoading] =
-    useState(true);
-
-  // =====================================================
-  // LOAD COURSE ACCESS
-  // =====================================================
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadCourseAccess = async () => {
-      if (!userId || !courseId) {
-        if (mounted) {
-          setAccessLoading(false);
-        }
-
-        return;
-      }
-
-      try {
-        setAccessLoading(true);
-
-        const result =
-          await getCoursePurchaseStatus(
-            courseId,
-            userId
-          );
-
-        if (!mounted) {
-          return;
-        }
-
-        setCourseAccess(
-          Boolean(result?.hasAccess)
-        );
-
-        setAccessType(
-          result?.accessType || ""
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load course access:",
-          error
-        );
-
-        if (mounted) {
-          setCourseAccess(false);
-          setAccessType("");
-        }
-      } finally {
-        if (mounted) {
-          setAccessLoading(false);
-        }
-      }
-    };
-
-    loadCourseAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [courseId, userId]);
 
   // =====================================================
   // START FIRST LESSON
@@ -242,6 +169,14 @@ export default function CourseDetailPage({
     <AppLayout active={active}>
       <div className="px-6 py-6">
 
+        <button
+          onClick={handleBack}
+          className="mb-4 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-purple-600"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+
         {/* =================================================
             HEADER
         ================================================= */}
@@ -287,7 +222,8 @@ export default function CourseDetailPage({
 
               <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500">
                 <BookOpen size={12} />
-                {lessonCount}
+                {lessonCount}{" "}
+                {lessonCount === 1 ? "lesson" : "lessons"}
               </span>
 
               <span
@@ -324,8 +260,9 @@ export default function CourseDetailPage({
             <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
 
               <div
-                className="h-1.5 w-0 rounded-full"
+                className="h-1.5 rounded-full"
                 style={{
+                  width: `${safeProgress}%`,
                   background: DASH_GRADIENT,
                 }}
               />
@@ -333,12 +270,18 @@ export default function CourseDetailPage({
             </div>
 
             <p className="text-[9px] text-slate-400 mt-1">
-              0%
+              {safeProgress}%
             </p>
 
             <button
               onClick={handleStartFirstLesson}
-              className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-semibold text-white hover:opacity-90 flex items-center justify-center gap-1.5"
+              disabled={!lessons[0]?.path}
+              title={
+                lessons[0]?.path
+                  ? undefined
+                  : "No lessons available yet"
+              }
+              className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-semibold text-white hover:opacity-90 flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 background: DASH_GRADIENT,
               }}
@@ -366,6 +309,12 @@ export default function CourseDetailPage({
             <h2 className="text-sm font-extrabold text-[#241B4E] mb-3">
               Course Content
             </h2>
+
+            {lessons.length === 0 && (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-xs text-slate-500">
+                Lessons for this course are coming soon.
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
@@ -411,21 +360,19 @@ export default function CourseDetailPage({
 
                     <div className="flex items-start gap-2">
 
-                      {lesson.locked &&
-                      !courseAccess ? (
-                        <Lock
-                          size={14}
-                          className="mt-0.5 text-slate-300 shrink-0"
-                        />
-                      ) : (
+                      {(
                         <span
                           className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
                           style={{
                             background:
-                              DASH_GRADIENT,
+                              completedLessonIds.includes(lesson.lessonId)
+                                ? "#16A34A"
+                                : DASH_GRADIENT,
                           }}
                         >
-                          {i + 1}
+                          {completedLessonIds.includes(lesson.lessonId)
+                            ? "✓"
+                            : i + 1}
                         </span>
                       )}
 
@@ -531,24 +478,28 @@ export default function CourseDetailPage({
 
               </ul>
 
-              <p className="text-[10px] font-bold text-slate-500 mb-1.5">
-                Requirements
-              </p>
+              {requirements.length > 0 && (
+                <>
+                  <p className="text-[10px] font-bold text-slate-500 mb-1.5">
+                    Requirements
+                  </p>
 
-              <ul className="space-y-1.5">
+                  <ul className="space-y-1.5">
 
-                {requirements.map(
-                  (item) => (
-                    <li
-                      key={item}
-                      className="text-[10px] text-slate-500"
-                    >
-                      • {item}
-                    </li>
-                  )
-                )}
+                    {requirements.map(
+                      (item) => (
+                        <li
+                          key={item}
+                          className="text-[10px] text-slate-500"
+                        >
+                          • {item}
+                        </li>
+                      )
+                    )}
 
-              </ul>
+                  </ul>
+                </>
+              )}
 
             </div>
 

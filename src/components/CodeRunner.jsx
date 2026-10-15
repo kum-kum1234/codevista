@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Play, Loader2 } from "lucide-react";
+import { recordCodeRun } from "../services/api";
 
 const DASH_GRADIENT = "linear-gradient(135deg, #8B5CF6, #1AACDB)";
 const PYODIDE_VERSION = "0.26.4";
@@ -132,6 +133,10 @@ export default function CodeRunner({
       }
 
       setOutput(captured.trimEnd() || "(no output)");
+
+      if (executionSuccessful) {
+        recordCodeRun();
+      }
 
       /*
        * Tell LessonPage that this exercise passed.

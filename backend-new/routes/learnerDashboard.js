@@ -15,7 +15,7 @@ const {
 // ============================================================
 
 const authMiddleware =
-  require("../middlewares/auth");
+  require("../src/middlewares/auth.middleware");
 
 
 // ============================================================

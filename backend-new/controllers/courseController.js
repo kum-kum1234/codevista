@@ -1,4 +1,5 @@
 const Course = require("../models/Course");
+const Lesson = require("../models/Lesson");
 const Profile = require("../models/Profile");
 const {
     sendNotificationToUser
@@ -15,6 +16,12 @@ const notifyCourseUsers = async ({
     message,
     courseId
 }) => {
+    // Off by default so test runs do not spam every user. Set
+    // COURSE_NOTIFICATIONS=true in the environment to enable.
+    if (process.env.COURSE_NOTIFICATIONS !== "true") {
+        return;
+    }
+
     try {
         const profiles = await Profile.find({
             active: true
@@ -45,6 +52,26 @@ const notifyCourseUsers = async ({
             error.message
         );
     }
+};
+
+
+// ============================================================
+// lessonsCount always reflects the lessons that really exist
+// ============================================================
+
+const withLessonCounts = async (courses) => {
+    const counts = await Lesson.aggregate([
+        { $group: { _id: "$courseId", count: { $sum: 1 } } }
+    ]);
+
+    const byCourse = new Map(counts.map((entry) => [entry._id, entry.count]));
+
+    return courses.map((course) => {
+        const plain = course.toObject ? course.toObject() : course;
+        const actual = byCourse.get(plain.courseId);
+
+        return { ...plain, lessonsCount: actual === undefined ? plain.lessonsCount : actual };
+    });
 };
 
 
@@ -84,7 +111,7 @@ const createCourse = async (req, res) => {
 
 const getCourses = async (req, res) => {
     try {
-        const courses = await Course.find();
+        const courses = await withLessonCounts(await Course.find());
 
         res.status(200).json({
             success: true,
@@ -117,9 +144,11 @@ const getCourseById = async (req, res) => {
             });
         }
 
+        const [courseWithCount] = await withLessonCounts([course]);
+
         res.status(200).json({
             success: true,
-            course
+            course: courseWithCount
         });
 
     } catch (error) {

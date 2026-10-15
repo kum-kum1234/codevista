@@ -1,6 +1,32 @@
 const mongoose = require("mongoose");
 
-const noteSchema = new mongoose.Schema(
+const subjectSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+    },
+
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    icon: {
+      type: String,
+      default: "BookOpen",
+    },
+
+    order: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { _id: false }
+);
+
+const noteSubjectSchema = new mongoose.Schema(
   {
     userId: {
       type: String,
@@ -8,31 +34,9 @@ const noteSchema = new mongoose.Schema(
       index: true,
     },
 
-    title: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    body: {
-      type: String,
-      default: "",
-    },
-
-    colorIndex: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    subjectId: {
-      type: String,
-      default: null,
-    },
-
-    pinned: {
-      type: Boolean,
-      default: false,
+    subjects: {
+      type: [subjectSchema],
+      default: [],
     },
 
     active: {
@@ -42,9 +46,10 @@ const noteSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: "notes",
+    collection: "notesubjects",
   }
 );
 
 module.exports =
-  mongoose.models.Note || mongoose.model("Note", noteSchema);
+  mongoose.models.NoteSubject ||
+  mongoose.model("NoteSubject", noteSubjectSchema);

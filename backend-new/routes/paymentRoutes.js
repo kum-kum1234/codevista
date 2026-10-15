@@ -2,6 +2,9 @@ const express = require("express");
 
 const paymentController = require("../controllers/paymentController");
 
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner } = require("../src/middlewares/access.middleware");
+
 const router = express.Router();
 
 // =====================================================
@@ -10,6 +13,8 @@ const router = express.Router();
 
 router.post(
   "/create-checkout-session",
+  auth,
+  requireOwner,
   paymentController.createCheckoutSession
 );
 
@@ -20,6 +25,8 @@ router.post(
 
 router.post(
   "/create-course-checkout-session",
+  auth,
+  requireOwner,
   paymentController.createCourseCheckoutSession
 );
 
@@ -30,6 +37,7 @@ router.post(
 
 router.get(
   "/status/:sessionId",
+  auth,
   paymentController.getPaymentStatus
 );
 

@@ -3,14 +3,20 @@ const express = require("express");
 const {
   getStarters,
   createStarter,
+  updateStarter,
+  deleteStarter,
   getChallenges,
   createChallenge,
   updateChallenge,
+  deleteChallenge,
   getProjects,
   saveProject,
   updateProject,
   deleteProject,
 } = require("../controllers/playgroundController");
+
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner, requireAdmin } = require("../src/middlewares/access.middleware");
 
 const router = express.Router();
 
@@ -20,7 +26,26 @@ const router = express.Router();
 
 router.get("/starters", getStarters);
 
-router.post("/starters", createStarter);
+router.post(
+  "/starters",
+  auth,
+  requireAdmin,
+  createStarter
+);
+
+router.put(
+  "/starters/:starterId",
+  auth,
+  requireAdmin,
+  updateStarter
+);
+
+router.delete(
+  "/starters/:starterId",
+  auth,
+  requireAdmin,
+  deleteStarter
+);
 
 // =====================================================
 // PLAYGROUND CHALLENGES
@@ -28,21 +53,58 @@ router.post("/starters", createStarter);
 
 router.get("/challenges", getChallenges);
 
-router.post("/challenges", createChallenge);
+router.post(
+  "/challenges",
+  auth,
+  requireAdmin,
+  createChallenge
+);
 
-router.put("/challenges/:challengeId", updateChallenge);
+router.put(
+  "/challenges/:challengeId",
+  auth,
+  requireAdmin,
+  updateChallenge
+);
+
+router.delete(
+  "/challenges/:challengeId",
+  auth,
+  requireAdmin,
+  deleteChallenge
+);
 
 // =====================================================
 // PLAYGROUND PROJECTS
 // =====================================================
 
-router.get("/projects", getProjects);
+router.get(
+  "/projects",
+  auth,
+  requireOwner,
+  getProjects
+);
 
-router.post("/projects", saveProject);
+router.post(
+  "/projects",
+  auth,
+  requireOwner,
+  saveProject
+);
 
-router.put("/projects/:projectId", updateProject);
+router.put(
+  "/projects/:projectId",
+  auth,
+  requireOwner,
+  updateProject
+);
 
-router.delete("/projects/:projectId", deleteProject);
+router.delete(
+  "/projects/:projectId",
+  auth,
+  requireOwner,
+  deleteProject
+);
 
 // =====================================================
 // EXPORT

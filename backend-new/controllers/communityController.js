@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const {
   CommunityPost,
   CommunityQuestion,
@@ -5,6 +6,36 @@ const {
   CommunityChallenge,
   CommunitySettings,
 } = require("../models/Community");
+
+const Profile = require("../models/Profile");
+
+const {
+  addCommunityXp,
+  levelFromXp,
+} = require("../services/activityService");
+
+const POST_XP = 10;
+
+// Used when no settings document exists yet, so the page always works.
+const DEFAULT_SETTINGS = {
+  settingId: "default",
+  filterCategories: [
+    "All Categories",
+    "General",
+    "Python Basics",
+    "Projects",
+    "Help & Questions",
+  ],
+  postTypes: ["General", "Question", "Project Showcase", "Achievement"],
+  postCategories: ["General", "Python Basics", "Projects", "Help & Questions"],
+  helpGuidelines: [
+    "Describe what you are trying to do",
+    "Share the code you have tried",
+    "Include the exact error message",
+    "Be kind and respectful",
+  ],
+  active: true,
+};
 
 // =====================================================
 // GET COMMUNITY FEED
@@ -136,7 +167,7 @@ const createPost = async (req, res) => {
         active: true,
       });
 
-    await CommunityUser.findOneAndUpdate(
+    await CommunityUser.updateOne(
       { userId },
       {
         $set: {
@@ -144,17 +175,16 @@ const createPost = async (req, res) => {
           username:
             req.body.username || "",
         },
-        $inc: {
-          posts: 1,
-          xp: 10,
-        },
       },
       {
         upsert: true,
-        new: true,
         setDefaultsOnInsert: true,
       }
     );
+
+    await addCommunityXp(userId, POST_XP, {
+      posts: 1,
+    });
 
     res.status(201).json({
       success: true,
@@ -196,18 +226,17 @@ const deletePost = async (req, res) => {
       });
     }
 
+    // The id may be the Mongo _id or the public postId; only query _id
+    // when it is a valid ObjectId, otherwise Mongoose throws a CastError.
+    const matches = [{ postId, userId }];
+
+    if (mongoose.Types.ObjectId.isValid(postId)) {
+      matches.push({ _id: postId, userId });
+    }
+
     const post =
       await CommunityPost.findOneAndDelete({
-        $or: [
-          {
-            _id: postId,
-            userId,
-          },
-          {
-            postId,
-            userId,
-          },
-        ],
+        $or: matches,
       });
 
     if (!post) {
@@ -217,14 +246,9 @@ const deletePost = async (req, res) => {
       });
     }
 
-    await CommunityUser.findOneAndUpdate(
-      { userId },
-      {
-        $inc: {
-          posts: -1,
-        },
-      }
-    );
+    await addCommunityXp(userId, -POST_XP, {
+      posts: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -377,18 +401,23 @@ const getSettings = async (
   res
 ) => {
   try {
-    const settings =
+    let settings =
       await CommunitySettings.findOne({
         settingId: "default",
         active: true,
       });
 
     if (!settings) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Community settings not found",
-      });
+      settings =
+        await CommunitySettings.findOneAndUpdate(
+          { settingId: "default" },
+          { $setOnInsert: DEFAULT_SETTINGS },
+          {
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true,
+          }
+        );
     }
 
     res.status(200).json({
@@ -510,14 +539,21 @@ const getCommunityStats = async (
       });
 
     if (!user) {
+      const profile = await Profile.findOne({ userId })
+        .select("name")
+        .lean();
+
       user =
         await CommunityUser.create({
           userId,
           name:
             req.query.name ||
+            profile?.name ||
             "Community Member",
         });
     }
+
+    const level = levelFromXp(user.xp);
 
     const activeMembers =
       await CommunityUser.countDocuments({
@@ -566,13 +602,13 @@ const getCommunityStats = async (
         username:
           user.username,
         name: user.name,
-        xp: user.xp,
-        level: user.level,
+        xp: level.xp,
+        level: level.level,
         xpToNextLevel:
-          user.xpToNextLevel,
+          level.xpToNextLevel,
         xpProgress:
-          user.xpProgress,
-        posts: user.posts,
+          level.xpProgress,
+        posts: Math.max(0, user.posts),
         streak: user.streak,
         lessons: user.lessons,
         badges: user.badges,
@@ -583,8 +619,8 @@ const getCommunityStats = async (
         activeMembers,
         postsThisWeek,
         questionsAnswered,
-        averageResponseTime:
-          "0h",
+        // No answer timestamps are tracked yet, so there is nothing to average.
+        averageResponseTime: null,
       },
 
       topContributors:
@@ -762,11 +798,35 @@ const getChallenges = async (
   res
 ) => {
   try {
-    const challenges =
+    const now = Date.now();
+
+    const stored =
       await CommunityChallenge.find({
         active: true,
       }).sort({
         createdAt: 1,
+      });
+
+    const challenges = stored
+      .filter(
+        (item) =>
+          !item.endsAt ||
+          item.endsAt.getTime() > now
+      )
+      .map((item) => {
+        const challenge = item.toObject();
+
+        if (item.endsAt) {
+          challenge.daysLeft = Math.max(
+            0,
+            Math.ceil(
+              (item.endsAt.getTime() - now) /
+                (24 * 60 * 60 * 1000)
+            )
+          );
+        }
+
+        return challenge;
       });
 
     res.status(200).json({
@@ -801,18 +861,34 @@ const createChallenge =
         description,
         colorType,
         daysLeft,
+        endsAt,
       } = req.body;
 
       if (
         !challengeId ||
         !title ||
         !description ||
-        daysLeft === undefined
+        (daysLeft === undefined && !endsAt)
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "challengeId, title, description and daysLeft are required",
+            "challengeId, title, description and daysLeft (or endsAt) are required",
+        });
+      }
+
+      const endDate = endsAt
+        ? new Date(endsAt)
+        : new Date(
+            Date.now() +
+              Number(daysLeft) *
+                24 * 60 * 60 * 1000
+          );
+
+      if (Number.isNaN(endDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "endsAt is not a valid date",
         });
       }
 
@@ -839,7 +915,14 @@ const createChallenge =
             description,
             colorType:
               colorType || "purple",
-            daysLeft,
+            daysLeft: Math.max(
+              0,
+              Math.ceil(
+                (endDate.getTime() - Date.now()) /
+                  (24 * 60 * 60 * 1000)
+              )
+            ),
+            endsAt: endDate,
             active: true,
           }
         );

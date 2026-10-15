@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Award,
   Lock,
@@ -27,6 +28,27 @@ const ACHIEVEMENTS_GRADIENT =
 
 const TABS = ["Achievements", "Progress Report"];
 
+// Where each kind of achievement is earned.
+const EARN_ROUTES = {
+  lessonsDone: "/courses",
+  exercisesDone: "/courses",
+  perfectQuizzes: "/courses",
+  beginnerCoursesCompleted: "/courses",
+  currentStreak: "/courses",
+  codeRuns: "/playground",
+  projectsCreated: "/playground",
+  projectsSaved: "/playground",
+  gamesCreated: "/playground",
+  dataAnalysisProjects: "/playground",
+  visualArtProjects: "/turtle-art-studio",
+  commentsMade: "/community",
+  collaborations: "/code-together",
+};
+
+function getEarnRoute(item) {
+  return EARN_ROUTES[item?.criteriaType] || "/courses";
+}
+
 const FILTERS = ["All", "Unlocked", "Locked"];
 
 // =====================================================
@@ -53,6 +75,8 @@ const ICONS = {
 // =====================================================
 
 export default function Achievements() {
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] =
     useState("Achievements");
 
@@ -384,16 +408,16 @@ export default function Achievements() {
               {
                 value:
                   summary.total,
-                label: "Total",
+                label: "Total to Unlock",
               },
               {
                 value:
                   summary.badges,
-                label: "Badges",
+                label: "Badges Earned",
               },
               {
                 value: `${summary.donePercentage}%`,
-                label: "Done",
+                label: "Completed",
               },
             ].map((item) => (
               <div
@@ -560,7 +584,16 @@ export default function Achievements() {
                             badge._id ||
                             badge.title
                           }
-                          className="rounded-xl border-2 bg-white p-5 text-center"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            navigate(getEarnRoute(badge))
+                          }
+                          onKeyDown={(e) =>
+                            e.key === "Enter" &&
+                            navigate(getEarnRoute(badge))
+                          }
+                          className="cursor-pointer rounded-xl border-2 bg-white p-5 text-center transition-shadow hover:shadow-md"
                           style={{
                             borderColor:
                               badge.unlocked
@@ -700,7 +733,16 @@ export default function Achievements() {
                             achievement._id ||
                             achievement.title
                           }
-                          className="rounded-xl border p-5"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            navigate(getEarnRoute(achievement))
+                          }
+                          onKeyDown={(e) =>
+                            e.key === "Enter" &&
+                            navigate(getEarnRoute(achievement))
+                          }
+                          className="cursor-pointer rounded-xl border p-5 transition-shadow hover:shadow-md"
                           style={
                             achievement.unlocked
                               ? {

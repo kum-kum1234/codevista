@@ -3,6 +3,9 @@ const express = require("express");
 const notificationController =
   require("../controllers/notificationController");
 
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner, requireAdmin } = require("../src/middlewares/access.middleware");
+
 const router =
   express.Router();
 
@@ -15,11 +18,15 @@ router.get(
 
 router.post(
   "/subscribe",
+  auth,
+  requireOwner,
   notificationController.subscribe
 );
 
 router.post(
   "/unsubscribe",
+  auth,
+  requireOwner,
   notificationController.unsubscribe
 );
 
@@ -27,16 +34,22 @@ router.post(
 // Notification data
 router.get(
   "/:userId",
+  auth,
+  requireOwner,
   notificationController.getNotifications
 );
 
 router.patch(
   "/:notificationId/read",
+  auth,
+  requireOwner,
   notificationController.markAsRead
 );
 
 router.patch(
   "/:userId/read-all",
+  auth,
+  requireOwner,
   notificationController.markAllAsRead
 );
 
@@ -44,6 +57,8 @@ router.patch(
 // Development testing
 router.post(
   "/test/send",
+  auth,
+  requireAdmin,
   notificationController.sendTestNotification
 );
 

@@ -1,8 +1,12 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const timetableRoutes = require("../routes/timetableRoutes");
 const authRoutes = require("../routes/auth");
+const adminRoutes = require("../routes/adminRoutes");
 const achievementRoutes = require("../routes/achievementRoutes");
 const courseRoutes = require("../routes/courseRoutes");
 const lessonRoutes = require("../routes/lessonRoutes");
@@ -20,14 +24,40 @@ const weeklyReportRoutes = require("../routes/weeklyReportRoutes");
 const paymentRoutes = require("../routes/paymentRoutes");
 const paymentController = require("../controllers/paymentController");
 const coursePurchaseRoutes = require("../routes/coursePurchaseRoutes");
+const progressRoutes = require("../routes/progress");
 
 const app = express();
+
+// Vercel / reverse proxies: needed for correct client IPs (rate limiting)
+app.set("trust proxy", 1);
 
 // =====================================================
 // MIDDLEWARE
 // =====================================================
 
-app.use(cors());
+app.use(helmet());
+
+// Only the configured frontends may call the API from a browser.
+// Set CORS_ORIGINS (comma separated) and/or FRONTEND_URL in the environment.
+const allowedOrigins = [
+    "http://localhost:5173",
+    process.env.FRONTEND_URL,
+    ...(process.env.CORS_ORIGINS || "").split(",")
+]
+    .map((origin) => (origin || "").trim().replace(/[/]+$/, ""))
+    .filter(Boolean);
+
+app.use(
+    cors({
+        origin(origin, callback) {
+            // non-browser clients (Stripe, curl, server-to-server) send no Origin
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(null, false);
+        }
+    })
+);
 
 // =====================================================
 // STRIPE WEBHOOK
@@ -40,12 +70,15 @@ app.post(
     paymentController.handleStripeWebhook
 );
 
+// Course purchase webhook (also needs the raw body, so before express.json())
+app.use("/api/stripe", require("../routes/stripeWebhook"));
+
 // =====================================================
 // NORMAL JSON MIDDLEWARE
 // =====================================================
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 // =====================================================
 // API ROUTES
@@ -59,6 +92,9 @@ app.use(
 );
 
 app.use("/api/courses", courseRoutes);
+
+app.use("/api/progress", progressRoutes);
+
 
 app.use("/api/community", communityRoutes);
 
@@ -79,6 +115,8 @@ app.use("/api/help", helpRoutes);
 app.use("/api/timetable", timetableRoutes);
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/admin", adminRoutes);
 
 app.use("/api/turtle-studio", turtleStudioRoutes);
 
@@ -123,9 +161,14 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     console.error("API Error:", err);
 
-    res.status(err.status || 500).json({
+    const status = err.status || 500;
+
+    res.status(status).json({
         success: false,
-        message: err.message || "Internal Server Error"
+        message:
+            status >= 500 && process.env.NODE_ENV === "production"
+                ? "Internal Server Error"
+                : err.message || "Internal Server Error"
     });
 });
 

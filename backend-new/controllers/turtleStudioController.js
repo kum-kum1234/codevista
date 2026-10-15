@@ -4,6 +4,8 @@ const {
   TurtleProject,
 } = require("../models/TurtleStudio");
 
+const { trackActivity } = require("../services/activityService");
+
 // =====================================================
 // GET TEMPLATES
 // =====================================================
@@ -91,6 +93,115 @@ const createTemplate = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create turtle template",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// UPDATE TEMPLATE
+// For Postman/admin use
+// =====================================================
+
+const updateTemplate = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+
+    const {
+      name,
+      description,
+      code,
+      language,
+      active,
+    } = req.body;
+
+    if (!name || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "name and code are required",
+      });
+    }
+
+    const template =
+      await TurtleTemplate.findOneAndUpdate(
+        {
+          templateId,
+        },
+        {
+          name,
+          description: description || "",
+          code,
+          language: language || "python",
+          active:
+            typeof active === "boolean"
+              ? active
+              : true,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: "Template not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      template,
+    });
+  } catch (error) {
+    console.error(
+      "Update turtle template error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update turtle template",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// DELETE TEMPLATE
+// For Postman/admin use
+// =====================================================
+
+const deleteTemplate = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+
+    const template =
+      await TurtleTemplate.findOneAndDelete({
+        templateId,
+      });
+
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: "Template not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Template deleted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "Delete turtle template error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete turtle template",
       error: error.message,
     });
   }
@@ -262,6 +373,11 @@ const saveProject = async (req, res) => {
         language: language || "python",
       });
 
+    await trackActivity(userId, {
+      inc: { projectsCreated: 1, projectsSaved: 1, visualArtProjects: 1 },
+      xp: 15,
+    });
+
     res.status(201).json({
       success: true,
       project,
@@ -405,6 +521,8 @@ const deleteProject = async (req, res) => {
 module.exports = {
   getTemplates,
   createTemplate,
+  updateTemplate,
+  deleteTemplate,
   getSettings,
   upsertSettings,
   getProjects,

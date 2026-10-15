@@ -4,6 +4,8 @@ const {
   PlaygroundChallenge,
 } = require("../models/Playground");
 
+const { trackActivity } = require("../services/activityService");
+
 // =====================================================
 // GET STARTERS
 // =====================================================
@@ -79,6 +81,109 @@ const createStarter = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create playground starter",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// UPDATE STARTER
+// For Postman/admin use
+// =====================================================
+
+const updateStarter = async (req, res) => {
+  try {
+    const { starterId } = req.params;
+
+    const {
+      title,
+      description,
+      code,
+      language,
+      active,
+    } = req.body;
+
+    if (!title || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "title and code are required",
+      });
+    }
+
+    const starter =
+      await PlaygroundStarter.findOneAndUpdate(
+        {
+          starterId,
+        },
+        {
+          title,
+          description: description || "",
+          code,
+          language: language || "python",
+          active:
+            typeof active === "boolean"
+              ? active
+              : true,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+    if (!starter) {
+      return res.status(404).json({
+        success: false,
+        message: "Starter not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      starter,
+    });
+  } catch (error) {
+    console.error("Update playground starter error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update playground starter",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// DELETE STARTER
+// For Postman/admin use
+// =====================================================
+
+const deleteStarter = async (req, res) => {
+  try {
+    const { starterId } = req.params;
+
+    const starter =
+      await PlaygroundStarter.findOneAndDelete({
+        starterId,
+      });
+
+    if (!starter) {
+      return res.status(404).json({
+        success: false,
+        message: "Starter not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Starter deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete playground starter error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete playground starter",
       error: error.message,
     });
   }
@@ -242,6 +347,42 @@ const updateChallenge = async (req, res) => {
 };
 
 // =====================================================
+// DELETE CHALLENGE
+// For Postman/admin use
+// =====================================================
+
+const deleteChallenge = async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+
+    const challenge =
+      await PlaygroundChallenge.findOneAndDelete({
+        challengeId,
+      });
+
+    if (!challenge) {
+      return res.status(404).json({
+        success: false,
+        message: "Challenge not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Challenge deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete playground challenge error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete playground challenge",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
 // GET USER PROJECTS
 // =====================================================
 
@@ -304,6 +445,11 @@ const saveProject = async (req, res) => {
       description: description || "",
       code,
       language: language || "python",
+    });
+
+    await trackActivity(userId, {
+      inc: { projectsCreated: 1, projectsSaved: 1 },
+      xp: 15,
     });
 
     res.status(201).json({
@@ -434,9 +580,12 @@ const deleteProject = async (req, res) => {
 module.exports = {
   getStarters,
   createStarter,
+  updateStarter,
+  deleteStarter,
   getChallenges,
   createChallenge,
   updateChallenge,
+  deleteChallenge,
   getProjects,
   saveProject,
   updateProject,

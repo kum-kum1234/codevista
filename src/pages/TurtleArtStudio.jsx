@@ -9,6 +9,7 @@ import {
   Palette as PaletteIcon,
   Loader2,
   Check,
+  FolderOpen,
 } from "lucide-react";
 import AppLayout from "../components/AppLayout";
 import { loadPyodideRuntime } from "../components/CodeRunner";
@@ -18,6 +19,8 @@ import {
   getTurtleSettings,
   saveTurtleProject,
   updateTurtleProject,
+  getTurtleProjects,
+  deleteTurtleProject,
 } from "../services/api";
 
 // --- Python-side shim: fakes the `turtle` module so `import turtle` in the
@@ -263,6 +266,11 @@ export default function TurtleArtStudio() {
   const [defaultTemplate, setDefaultTemplate] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [loadingStudio, setLoadingStudio] = useState(true);
+  const [projects, setProjects] = useState([]);
+  const [showProjects, setShowProjects] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  const currentUserId = getCurrentUser?.()?.userId;
 
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -316,6 +324,30 @@ export default function TurtleArtStudio() {
 
     loadStudioData();
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setProjects([]);
+      return;
+    }
+
+    const loadProjects = async () => {
+      try {
+        setLoadingProjects(true);
+
+        const response = await getTurtleProjects(currentUserId);
+
+        setProjects(response?.projects || []);
+      } catch (err) {
+        console.error("Failed to load Turtle projects:", err);
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    loadProjects();
+  }, [currentUserId]);
 
   // Keep the canvas's pixel resolution matched to its displayed size.
   useEffect(() => {
@@ -568,10 +600,12 @@ export default function TurtleArtStudio() {
     try {
       const user = getCurrentUser?.();
 
-      const userId =
-        user?.email ||
-        user?.phone ||
-        "guest";
+      const userId = user?.userId;
+
+      if (!userId) {
+        setError("Please sign in before saving a project.");
+        return;
+      }
 
       if (!code.trim()) {
         setError("There is no code to save.");
@@ -674,9 +708,14 @@ export default function TurtleArtStudio() {
       }
 
       if (response?.project) {
-        setSelectedProject(
-          response.project
-        );
+        const saved = response.project;
+
+        setSelectedProject(saved);
+
+        setProjects((prev) => [
+          saved,
+          ...prev.filter((p) => p._id !== saved._id),
+        ]);
       }
 
       setSavedFlash(true);
@@ -701,6 +740,37 @@ export default function TurtleArtStudio() {
       setError(
         "Failed to save your Turtle project."
       );
+    }
+  }
+
+  function openProject(project) {
+    setCode(project.code || "");
+    setSelectedProject(project);
+
+    if (project.penColor) {
+      setPenColor(project.penColor);
+    }
+
+    setShowProjects(false);
+    setError("");
+    setHasRun(false);
+    clearCanvas();
+  }
+
+  async function handleDeleteProject(project) {
+    if (!window.confirm(`Delete "${project.title}"?`)) return;
+
+    try {
+      await deleteTurtleProject(project._id, currentUserId);
+
+      setProjects((prev) => prev.filter((p) => p._id !== project._id));
+
+      if (selectedProject?._id === project._id) {
+        setSelectedProject(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete Turtle project:", err);
+      setError("Failed to delete the project.");
     }
   }
 
@@ -880,6 +950,7 @@ export default function TurtleArtStudio() {
                   (v) => !v
                 );
                 setShowColours(false);
+                setShowProjects(false);
               }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
             >
@@ -929,10 +1000,65 @@ export default function TurtleArtStudio() {
           <div className="relative">
             <button
               onClick={() => {
+                setShowProjects((v) => !v);
+                setShowTemplates(false);
+                setShowColours(false);
+              }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
+            >
+              <FolderOpen size={12} />
+              My Projects
+            </button>
+
+            {showProjects && (
+              <div className="absolute bottom-full mb-2 left-0 w-56 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1 z-10">
+                {!currentUserId ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    Sign in to see your projects
+                  </div>
+                ) : loadingProjects ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    Loading projects…
+                  </div>
+                ) : projects.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    No saved projects yet
+                  </div>
+                ) : (
+                  projects.map((project) => (
+                    <div
+                      key={project._id}
+                      className="flex items-center rounded-lg hover:bg-slate-50"
+                    >
+                      <button
+                        onClick={() => openProject(project)}
+                        className="flex-1 min-w-0 truncate text-left px-3 py-2 text-xs font-semibold text-slate-600"
+                      >
+                        {project.title}
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteProject(project)}
+                        className="px-2 text-red-400 hover:text-red-600"
+                        aria-label="Delete project"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => {
                 setShowColours(
                   (v) => !v
                 );
                 setShowTemplates(false);
+                setShowProjects(false);
               }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
             >

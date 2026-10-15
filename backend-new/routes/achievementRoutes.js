@@ -8,7 +8,11 @@ const {
   updateUserStats,
   getUserAchievements,
   getUnlockedAchievements,
+  recordActivity,
 } = require("../controllers/achievementController");
+
+const auth = require("../src/middlewares/auth.middleware");
+const { requireOwner, requireAdmin } = require("../src/middlewares/access.middleware");
 
 const router = express.Router();
 
@@ -23,12 +27,23 @@ router.get(
 
 router.post(
   "/",
+  auth,
+  requireAdmin,
   createAchievement
 );
 
 router.put(
   "/:achievementId",
+  auth,
+  requireAdmin,
   updateAchievement
+);
+
+router.post(
+  "/activity",
+  auth,
+  requireOwner,
+  recordActivity
 );
 
 // =====================================================
@@ -37,11 +52,15 @@ router.put(
 
 router.get(
   "/user/:userId/stats",
+  auth,
+  requireOwner,
   getUserStats
 );
 
 router.put(
   "/user/:userId/stats",
+  auth,
+  requireAdmin,
   updateUserStats
 );
 
@@ -51,11 +70,15 @@ router.put(
 
 router.get(
   "/user/:userId",
+  auth,
+  requireOwner,
   getUserAchievements
 );
 
 router.get(
   "/user/:userId/unlocked",
+  auth,
+  requireOwner,
   getUnlockedAchievements
 );
 
