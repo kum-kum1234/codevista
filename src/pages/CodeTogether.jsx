@@ -966,7 +966,6 @@ export default function CodeTogether() {
   );
 }
 
-// Format a Date into a user-friendly time string for session status messages.
 function formatTime(date) {
   return new Intl.DateTimeFormat("en-IN", {
     hour: "numeric",
@@ -986,7 +985,6 @@ function formatDate(date) {
   }).format(date);
 }
 
-// Build the Zoom-related messaging shown before registration is complete.
 function zoomMessage(state, schedule, sessionStart) {
   if (state === "unregistered") {
     return (
