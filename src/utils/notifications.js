@@ -201,23 +201,26 @@ export async function disableBrowserNotifications(
 
 
   // Tell backend to disable subscription
-  await authFetch(
-    `${API_URL}/notifications/unsubscribe`,
-    {
-      method: "POST",
+ const response = await authFetch(
+  `${API_URL}/notifications/unsubscribe`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      endpoint: subscription.endpoint,
+    }),
+  }
+);
 
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        userId,
-
-        endpoint:
-          subscription.endpoint,
-      }),
-    }
+if (!response.ok) {
+  const data = await response.json();
+  throw new Error(
+    data.message || "Failed to disable notifications."
   );
+}
 
 
   // Remove browser subscription

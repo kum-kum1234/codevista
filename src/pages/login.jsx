@@ -170,9 +170,7 @@ export default function Login() {
   // =====================================================
   // EMAIL LOGIN
   // =====================================================
-  // NOTE:
-  // This remains the existing frontend/demo email flow
-  // because no email-login backend endpoint was provided.
+  // Email login using the backend authentication API.
   async function handleEmailSubmit(e) {
   e.preventDefault();
 
@@ -210,12 +208,26 @@ export default function Login() {
     // LOGIN SUCCESSFUL
     // ---------------------------------------------
 
-    if (!data.user) {
-      throw new Error("Invalid login response from server.");
+    console.log("Login response:", {
+      status: data.status,
+      userExists: Boolean(data.user),
+      tokenExists: Boolean(data.token),
+      tokenType: typeof data.token,
+    });
+
+    if (!data.user || !data.token) {
+      throw new Error(
+        "Login response is missing user or authentication token."
+      );
     }
 
     setCurrentUser(data.user);
     setAuthToken(data.token);
+
+    console.log(
+      "Token saved:",
+      Boolean(localStorage.getItem("pythonkid_token"))
+    );
 
     navigate("/dashboard", {
       replace: true,
@@ -519,24 +531,14 @@ async function handleRegisterSubmit(e) {
       // Store that user locally and go to dashboard.
       // =================================================
 
-      if (data.user) {
-        setCurrentUser(data.user);
-        setAuthToken(data.token);
-
-        navigate("/dashboard", {
-          replace: true,
-        });
-
-        return;
+      if (!data.user || !data.token) {
+        throw new Error(
+          "OTP verification response is missing user or authentication token."
+        );
       }
 
-      // Fallback in case backend only returns approved
-      // without user information.
-      setCurrentUser({
-        phone: form.phone,
-        provider: "phone",
-        accountType: "Free",
-      });
+      setCurrentUser(data.user);
+      setAuthToken(data.token);
 
       navigate("/dashboard", {
         replace: true,

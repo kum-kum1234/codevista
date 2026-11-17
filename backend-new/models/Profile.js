@@ -1,8 +1,9 @@
+
 const mongoose = require("mongoose");
 
 /* =====================================================
    NOTIFICATION SCHEMA
-   ===================================================== */
+===================================================== */
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -10,12 +11,10 @@ const notificationSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
     achievements: {
       type: Boolean,
       default: true,
     },
-
     weeklyReport: {
       type: Boolean,
       default: true,
@@ -28,7 +27,7 @@ const notificationSchema = new mongoose.Schema(
 
 /* =====================================================
    SUBSCRIPTION SCHEMA
-   ===================================================== */
+===================================================== */
 
 const subscriptionSchema = new mongoose.Schema(
   {
@@ -37,29 +36,24 @@ const subscriptionSchema = new mongoose.Schema(
       default: "Free",
       trim: true,
     },
-
     description: {
       type: String,
       default: "",
       trim: true,
     },
-
     benefits: {
       type: [String],
       default: [],
     },
-
     price: {
       type: Number,
       default: 0,
     },
-
     period: {
       type: String,
       default: "per annum",
       trim: true,
     },
-
     status: {
       type: String,
       default: "active",
@@ -73,14 +67,11 @@ const subscriptionSchema = new mongoose.Schema(
 
 /* =====================================================
    PROFILE SCHEMA
-   ===================================================== */
+===================================================== */
 
 const profileSchema = new mongoose.Schema(
   {
-    /* ===================================================
-       USER ID
-       =================================================== */
-
+    // USER ID
     userId: {
       type: String,
       required: true,
@@ -89,18 +80,13 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
-    /* ===================================================
-       BASIC USER INFORMATION
-       =================================================== */
-
+    // BASIC INFORMATION
     name: {
       type: String,
       default: "Guest",
       trim: true,
     },
 
-    // No default: a missing email/phone stays absent instead of "",
-    // so the partial unique indexes below only cover real values.
     email: {
       type: String,
       trim: true,
@@ -112,6 +98,7 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // AUTHENTICATION PROVIDER
     provider: {
       type: String,
       enum: ["email", "phone", "google"],
@@ -119,43 +106,21 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
-    /* ===================================================
-       PASSWORD
-
-       Password is NEVER stored directly.
-
-       Only bcrypt hash is stored.
-
-       IMPORTANT:
-       select: false means passwordHash is hidden from
-       normal MongoDB queries.
-
-       Login must use:
-       .select("+passwordHash")
-       =================================================== */
-
+    // PASSWORD HASH
     passwordHash: {
       type: String,
       default: null,
       select: false,
     },
 
-    /* ===================================================
-       SESSION REVOCATION
-
-       Embedded in every user token. Logout increments it,
-       which invalidates all tokens issued before.
-       =================================================== */
-
+    // SESSION MANAGEMENT
     tokenVersion: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
-    /* ===================================================
-       ACCOUNT TYPE
-       =================================================== */
-
+    // ACCOUNT TYPE
     accountType: {
       type: String,
       enum: ["Free", "CoursePremium", "Premium"],
@@ -163,19 +128,13 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
-    /* ===================================================
-       INDIVIDUAL COURSE ACCESS
-       =================================================== */
-
+    // PREMIUM COURSE ACCESS
     premiumCourses: {
       type: [String],
       default: [],
     },
 
-    /* ===================================================
-       LEARNING PROGRESS
-       =================================================== */
-
+    // LEARNING PROGRESS
     overallProgress: {
       type: Number,
       default: 0,
@@ -195,58 +154,38 @@ const profileSchema = new mongoose.Schema(
       min: 0,
     },
 
-    /* ===================================================
-       NOTIFICATIONS
-       =================================================== */
-
+    // NOTIFICATION SETTINGS
     notifications: {
       type: notificationSchema,
       default: () => ({}),
     },
 
-    /* ===================================================
-       SUBSCRIPTION
-       =================================================== */
-
+    // SUBSCRIPTION DETAILS
     subscription: {
       type: subscriptionSchema,
-
       default: () => ({
         plan: "Free",
-
         description:
           "Upgrade to Premium for full access to all courses and features",
-
         benefits: [
           "Access to all courses and updates",
           "Project files and source code downloads",
           "Live coding sessions with instructors",
           "Certificates upon course completion",
         ],
-
         price: 4999,
-
         period: "per annum",
-
         status: "active",
       }),
     },
 
-    /* ===================================================
-       ACCOUNT STATUS
-       =================================================== */
-
+    // ACCOUNT STATUS
     active: {
       type: Boolean,
       default: true,
       index: true,
     },
   },
-
-  /* =====================================================
-     SCHEMA OPTIONS
-     ===================================================== */
-
   {
     timestamps: true,
     collection: "profiles",
@@ -254,23 +193,37 @@ const profileSchema = new mongoose.Schema(
 );
 
 /* =====================================================
-   UNIQUENESS (only for real, non-empty values)
-   ===================================================== */
+   UNIQUE EMAIL INDEX
+   Only applies to non-empty email addresses.
+===================================================== */
 
 profileSchema.index(
   { email: 1 },
   {
     unique: true,
-    partialFilterExpression: { email: { $type: "string", $gt: "" } },
+    partialFilterExpression: {
+      email: {
+        $type: "string",
+        $gt: "",
+      },
+    },
   }
 );
+
+/* =====================================================
+   UNIQUE PHONE INDEX
+   Only applies to active accounts with a phone number.
+===================================================== */
 
 profileSchema.index(
   { phone: 1 },
   {
     unique: true,
     partialFilterExpression: {
-      phone: { $type: "string", $gt: "" },
+      phone: {
+        $type: "string",
+        $gt: "",
+      },
       active: true,
     },
   }
@@ -278,7 +231,7 @@ profileSchema.index(
 
 /* =====================================================
    EXPORT MODEL
-   ===================================================== */
+===================================================== */
 
 module.exports =
   mongoose.models.Profile ||

@@ -558,6 +558,14 @@ router.post("/google", async (req, res) => {
 // =====================================================
 // OTP is generated locally and displayed on the website.
 // =====================================================
+    
+// =====================================================
+// SEND OTP
+// =====================================================
+
+// OTP is generated locally and displayed on the website.
+
+// =====================================================
 
 router.post("/otp/send", async (req, res) => {
   try {
@@ -584,14 +592,13 @@ router.post("/otp/send", async (req, res) => {
     // -------------------------------------------------
     // ONLY REGISTERED NUMBERS GET A WORKING CODE
     // -------------------------------------------------
-    // The response is identical for unknown and disabled numbers so
-    // this endpoint can't be used to find out who has an account.
 
     const existing = await Profile.findOne({
       phone: normalizedPhone,
     }).select("active");
 
-    const canReceiveCode = Boolean(existing) && existing.active !== false;
+    const canReceiveCode =
+      Boolean(existing) && existing.active !== false;
 
     // -------------------------------------------------
     // GENERATE OTP
@@ -600,7 +607,7 @@ router.post("/otp/send", async (req, res) => {
     const code = generateOtp();
 
     // -------------------------------------------------
-    // RESEND COOLDOWN
+    // CHECK RESEND COOLDOWN
     // -------------------------------------------------
 
     const previous = await Otp.findOne({
@@ -609,7 +616,8 @@ router.post("/otp/send", async (req, res) => {
 
     if (
       previous &&
-      Date.now() - previous.updatedAt.getTime() < OTP_RESEND_COOLDOWN_MS
+      Date.now() - previous.updatedAt.getTime() <
+        OTP_RESEND_COOLDOWN_MS
     ) {
       return res.status(429).json({
         error: "Please wait a little before requesting another code.",
@@ -617,7 +625,7 @@ router.post("/otp/send", async (req, res) => {
     }
 
     // -------------------------------------------------
-    // STORE OTP (hashed, replaces any earlier code)
+    // STORE OTP (HASHED)
     // -------------------------------------------------
 
     await Otp.findOneAndUpdate(
@@ -627,31 +635,58 @@ router.post("/otp/send", async (req, res) => {
         attempts: 0,
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       },
-      { upsert: true, setDefaultsOnInsert: true }
+      {
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
     );
 
     // -------------------------------------------------
-    // SEND SMS (code is never returned in the response)
+    // DEVELOPMENT TEST MODE
     // -------------------------------------------------
 
-    try {
-      if (canReceiveCode) {
+    const isOtpTestMode =
+      process.env.NODE_ENV !== "production" &&
+      process.env.OTP_TEST_MODE === "true";
+
+    // -------------------------------------------------
+    // SEND SMS
+    // -------------------------------------------------
+
+    if (canReceiveCode && !isOtpTestMode) {
+      try {
         await sendOtpSms(normalizedPhone, code);
+      } catch (smsError) {
+        console.error("OTP SMS failed:", smsError.message);
+
+        await Otp.deleteOne({
+          phone: normalizedPhone,
+        });
+
+        return res.status(502).json({
+          error: "Could not send the code. Please try again later.",
+        });
       }
-    } catch (smsError) {
-      console.error("OTP SMS failed:", smsError.message);
-
-      await Otp.deleteOne({ phone: normalizedPhone });
-
-      return res.status(502).json({
-        error: "Could not send the code. Please try again later.",
-      });
     }
 
-    return res.status(200).json({
+    // -------------------------------------------------
+    // RETURN RESPONSE
+    // -------------------------------------------------
+
+    const response = {
       status: "sent",
-      message: "OTP sent successfully.",
-    });
+      message: isOtpTestMode
+        ? "Development test OTP generated successfully."
+        : "OTP sent successfully.",
+    };
+
+    // Show OTP only in development mode for registered accounts.
+    if (canReceiveCode && isOtpTestMode) {
+      response.otp = code;
+      response.testMode = true;
+    }
+
+    return res.status(200).json(response);
 
   } catch (error) {
     console.error(
@@ -665,11 +700,11 @@ router.post("/otp/send", async (req, res) => {
     );
 
     return res.status(500).json({
-      error:
-        "Could not generate OTP. Please try again.",
+      error: "Could not generate OTP. Please try again.",
     });
   }
 });
+
 // =====================================================
 // VERIFY OTP
 // =====================================================

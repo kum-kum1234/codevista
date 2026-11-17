@@ -51,8 +51,8 @@ async function getCourseProgress(userId, courseId) {
 
 router.post("/lesson-complete", auth, requireOwner, async (req, res) => {
   try {
-    const { userId, lessonId } = req.body;
-
+     const userId = req.user.id;
+     const { lessonId } = req.body;
     if (!lessonId) {
       return res.status(400).json({
         success: false,
@@ -113,8 +113,8 @@ router.post("/lesson-complete", auth, requireOwner, async (req, res) => {
 
 router.post("/course-start", auth, requireOwner, async (req, res) => {
   try {
-    const { userId, courseId } = req.body;
-
+    const userId = req.user.id;
+    const { courseId } = req.body;
     if (!courseId) {
       return res.status(400).json({
         success: false,
